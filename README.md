@@ -1,7 +1,7 @@
 # QueueFlow — Smart Virtual Queue Management Platform (Prototype)
 
 > **Tagline:** Stop Waiting. Start Flowing.  
-> **Status:** Module 1 Complete (Phase 0: Setup & Prototype Architecture, Phase 1: Authentication & Business Basics).
+> **Status:** Modules 1-5 Complete (Auth, Smart Queue Management, Live Tracking, Discovery, & Dynamic Wait Time Prediction). Active prototype with 10 real-time businesses!
 
 ---
 
@@ -118,9 +118,9 @@ Base Path: `/api/v1`
 
 - [x] **Phase 0 — Setup & Prototype Architecture:** Monorepo, zero-dependency in-memory store, health check.
 - [x] **Phase 1 — Auth & Business Basics (Module 1):** Complete auth, role guards, business profile, counters, staff management, and responsive React frontend.
-- [ ] **Phase 2 — Core Queue MVP:** Token generation, position calculation, queue state machine (`waiting → called → serving → completed`), walk-in management.
-- [ ] **Phase 3 — Real-Time Updates:** Socket.IO rooms (`business:{id}`, `token:{id}`), live customer hero screen & live staff counter panel.
-- [ ] **Phase 4 — Customer Discovery:** Geo search, radius filter, sort by wait time.
-- [ ] **Phase 5 — Wait-Time Prediction:** ETA algorithm blend.
+- [x] **Phase 2 — Core Queue MVP (Smart Queue Management):** Token generation, dynamic position calculation, queue state machine (`waiting → called → serving → completed`), walk-in management.
+- [x] **Phase 3 — Real-Time Updates (Live Queue Tracking):** Socket.IO rooms (`business:{id}`, `token:{id}`, `public`), live customer hero screen & live staff counter panel synchronization.
+- [x] **Phase 4 — Customer Discovery (Nearby Queue Comparison):** Geo search, haversine distance calculation (mile ranges), and 10 dynamic seeded demo businesses.
+- [x] **Phase 5 — Wait-Time Prediction (Smart Wait-Time):** Dynamic ETA algorithm blending using real-time completed token service durations.
 - [ ] **Phase 6 — Notifications:** Approaching alerts & no-show handling.
 - [ ] **Phase 7 — Analytics:** Utilization charts, peak hours, metrics summary.
