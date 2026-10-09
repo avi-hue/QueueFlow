@@ -1,6 +1,59 @@
 const Queue = require('../models/Queue');
 const Token = require('../models/Token');
 const Business = require('../models/Business');
+const { getIO } = require('../sockets');
+
+function emitUpdates(businessId, token) {
+  try {
+    const io = getIO();
+    if (io) {
+      if (businessId) {
+        io.to(`business:${businessId}`).emit('queue:updated');
+        io.emit('public:queue:updated'); // Global emit for Discover page sync
+      }
+      if (token) {
+        io.to(`token:${token._id}`).emit('token:updated');
+        if (token.userId) {
+          io.to(`user:${token.userId}`).emit('token:updated');
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Socket emission error:', error);
+  }
+}
+
+
+/**
+ * Calculate dynamic average service time based on completed tokens
+ */
+async function getDynamicAvgServiceTime(business, queue) {
+  const defaultAvg = business?.settings?.avgServiceTimeDefault || 5;
+  const completedTokens = await Token.find({ queueId: queue._id, status: 'completed' });
+  
+  if (!completedTokens || completedTokens.length === 0) {
+    return defaultAvg;
+  }
+
+  let totalMinutes = 0;
+  let validCount = 0;
+
+  for (const token of completedTokens) {
+    const start = token.serviceStartedAt || token.calledAt;
+    const end = token.completedAt;
+    if (start && end) {
+      const diffMs = new Date(end) - new Date(start);
+      const diffMins = diffMs / (1000 * 60);
+      if (diffMins >= 0) {
+        totalMinutes += diffMins;
+        validCount++;
+      }
+    }
+  }
+
+  if (validCount === 0) return defaultAvg;
+  return totalMinutes / validCount;
+}
 
 /**
  * Get or initialize today's queue for a given business
@@ -70,8 +123,8 @@ async function joinQueue(businessId, userId) {
 
   // Estimate initial wait time
   const waitingAhead = await Token.countDocuments({ queueId: queue._id, status: 'waiting' });
-  const avgServiceTime = business.settings?.avgServiceTimeDefault || 5;
-  const estimatedWaitAtJoin = waitingAhead * avgServiceTime;
+  const avgServiceTime = await getDynamicAvgServiceTime(business, queue);
+  const estimatedWaitAtJoin = Math.round(waitingAhead * avgServiceTime);
 
   const newToken = new Token({
     queueId: queue._id,
@@ -86,6 +139,7 @@ async function joinQueue(businessId, userId) {
   });
 
   await newToken.save();
+  emitUpdates(businessId, newToken);
   return newToken;
 }
 
@@ -112,8 +166,8 @@ async function addWalkIn(businessId, walkInName, counterId = null) {
   const tokenLabel = `${prefix}-${paddedNumber}`;
 
   const waitingAhead = await Token.countDocuments({ queueId: queue._id, status: 'waiting' });
-  const avgServiceTime = business.settings?.avgServiceTimeDefault || 5;
-  const estimatedWaitAtJoin = waitingAhead * avgServiceTime;
+  const avgServiceTime = await getDynamicAvgServiceTime(business, queue);
+  const estimatedWaitAtJoin = Math.round(waitingAhead * avgServiceTime);
 
   const newToken = new Token({
     queueId: queue._id,
@@ -130,6 +184,7 @@ async function addWalkIn(businessId, walkInName, counterId = null) {
   });
 
   await newToken.save();
+  emitUpdates(businessId, newToken);
   return newToken;
 }
 
@@ -166,6 +221,7 @@ async function callNext(businessId, counterId, staffId = null) {
   }
   await queue.save();
 
+  emitUpdates(businessId, nextToken);
   return nextToken;
 }
 
@@ -185,6 +241,7 @@ async function startService(tokenId) {
   token.status = 'serving';
   token.serviceStartedAt = new Date().toISOString();
   await token.save();
+  emitUpdates(token.businessId, token);
   return token;
 }
 
@@ -212,6 +269,7 @@ async function completeToken(tokenId) {
     await queue.save();
   }
 
+  emitUpdates(token.businessId, token);
   return token;
 }
 
@@ -233,6 +291,7 @@ async function skipToken(tokenId) {
     await queue.save();
   }
 
+  emitUpdates(token.businessId, token);
   return token;
 }
 
@@ -262,6 +321,7 @@ async function cancelToken(tokenId, userId = null) {
     await queue.save();
   }
 
+  emitUpdates(token.businessId, token);
   return token;
 }
 
@@ -276,6 +336,8 @@ async function updateQueueStatus(businessId, status) {
   const queue = await getOrCreateTodaysQueue(businessId);
   queue.status = status;
   await queue.save();
+
+  emitUpdates(businessId, null);
   return queue;
 }
 
@@ -296,8 +358,8 @@ async function getQueueState(businessId) {
   const servingTokens = allTokens.filter((t) => t.status === 'serving');
   const completedTokens = allTokens.filter((t) => t.status === 'completed');
 
-  const avgServiceTime = business.settings?.avgServiceTimeDefault || 5;
-  const estimatedWaitMins = waitingTokens.length * avgServiceTime;
+  const avgServiceTime = await getDynamicAvgServiceTime(business, queue);
+  const estimatedWaitMins = Math.round(waitingTokens.length * avgServiceTime);
 
   return {
     businessId: business._id,
@@ -341,8 +403,8 @@ async function getUserActiveToken(userId) {
     position = waitingList.filter((t) => t.tokenNumber < token.tokenNumber).length + 1;
   }
 
-  const avgServiceTime = business?.settings?.avgServiceTimeDefault || 5;
-  const estimatedWaitMins = Math.max(0, (position - 1) * avgServiceTime);
+  const avgServiceTime = await getDynamicAvgServiceTime(business, queue);
+  const estimatedWaitMins = Math.round(Math.max(0, (position - 1) * avgServiceTime));
 
   // Find assigned counter details if called or serving
   let counterName = null;

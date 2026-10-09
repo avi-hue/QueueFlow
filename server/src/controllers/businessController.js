@@ -93,7 +93,45 @@ const getPublicBusiness = asyncHandler(async (req, res) => {
   });
 });
 
+
+const getAllBusinesses = asyncHandler(async (req, res) => {
+  const Business = require('../models/Business');
+  const queueService = require('../services/queueService');
+  
+  const businesses = await Business.find({});
+  
+  // Attach live queue stats and calculate mock distance from a fixed user point (NYC center)
+  const userLat = 40.748817;
+  const userLon = -73.98513;
+
+  const businessesWithStats = await Promise.all(businesses.map(async (biz) => {
+    let stats = null;
+    try {
+      const state = await queueService.getQueueState(biz._id);
+      stats = state.stats;
+    } catch (e) {
+      // Queue might not exist for today yet
+    }
+    
+    // Haversine distance in miles
+    const [bizLon, bizLat] = biz.location?.coordinates || [0, 0];
+    const R = 3958.8; // Radius of the Earth in miles
+    const rlat1 = userLat * (Math.PI/180);
+    const rlat2 = bizLat * (Math.PI/180);
+    const difflat = rlat2 - rlat1;
+    const difflon = (bizLon - userLon) * (Math.PI/180);
+    
+    const a = 2 * Math.asin(Math.sqrt(Math.sin(difflat/2)*Math.sin(difflat/2) + Math.cos(rlat1)*Math.cos(rlat2)*Math.sin(difflon/2)*Math.sin(difflon/2)));
+    const distanceMiles = (R * a).toFixed(1);
+
+    return { ...biz.toObject(), stats, distanceMiles };
+  }));
+
+  res.status(200).json({ success: true, data: { businesses: businessesWithStats } });
+});
+
 module.exports = {
+  getAllBusinesses,
   getProfile,
   updateProfile,
   addCounter,

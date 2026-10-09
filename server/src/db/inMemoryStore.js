@@ -23,115 +23,24 @@ class InMemoryStore {
 
   seed() {
     this.reset();
-
-    const ownerId = generateId();
-    const clinicId = generateId();
-    const staffId = generateId();
-    const triageCounterId = generateId();
-    const docCounterId = generateId();
-    const labCounterId = generateId();
-
+    
+    const todayStr = new Date().toISOString().split('T')[0];
     const salt = bcrypt.genSaltSync(10);
     const defaultPasswordHash = bcrypt.hashSync('Password123!', salt);
 
-    const owner = {
-      _id: ownerId,
-      name: 'Dr. Robert Vance',
-      email: 'owner@queueflow.dev',
-      passwordHash: defaultPasswordHash,
-      phone: '+1 (555) 234-5678',
-      role: 'owner',
-      businessId: clinicId,
-      notificationPrefs: { approachingThreshold: 3, positionAlerts: true },
-      createdAt: new Date().toISOString()
-    };
+    const bizTemplates = [
+      { name: 'Apex Health Clinic', category: 'Healthcare', desc: 'Primary care walk-in clinic and preventive healthcare.', lat: 40.748817, lng: -73.98513 },
+      { name: 'Urban Grind Artisanal Coffee', category: 'Food & Beverage', desc: 'Single-origin espresso bar & organic bakery.', lat: 40.72234, lng: -73.99723 },
+      { name: 'First National Bank', category: 'Banking', desc: 'Personal and commercial banking services.', lat: 40.758896, lng: -73.98513 },
+      { name: 'Downtown DMV', category: 'Government', desc: 'Department of Motor Vehicles office.', lat: 40.712776, lng: -74.005974 },
+      { name: 'Sweet Tooth Bakery', category: 'Food & Beverage', desc: 'Freshly baked pastries, cakes, and bread daily.', lat: 40.73061, lng: -73.935242 },
+      { name: 'ByteMe Tech Store', category: 'Retail', desc: 'Latest electronics, gadgets, and tech support.', lat: 40.74106, lng: -73.989698 },
+      { name: 'Sharp Cuts Barbershop', category: 'Services', desc: 'Classic men\'s grooming and modern haircuts.', lat: 40.728157, lng: -73.990471 },
+      { name: 'Wellness Pharmacy', category: 'Healthcare', desc: 'Prescription refills, immunizations, and wellness products.', lat: 40.761432, lng: -73.977621 },
+      { name: 'Iron Fit Gym', category: 'Fitness', desc: 'Premium fitness center with state-of-the-art equipment.', lat: 40.750504, lng: -73.993438 },
+      { name: 'Spice Route Restaurant', category: 'Restaurant', desc: 'Authentic flavors from around the world.', lat: 40.718266, lng: -73.998492 }
+    ];
 
-    const clinic = {
-      _id: clinicId,
-      ownerId: ownerId,
-      name: 'Apex Health Clinic',
-      category: 'Healthcare',
-      description: 'Primary care walk-in clinic and preventive healthcare with smart live queue tracking.',
-      phone: '+1 (555) 234-5678',
-      address: '350 5th Ave, New York, NY 10118',
-      location: {
-        type: 'Point',
-        coordinates: [-73.98513, 40.748817]
-      },
-      timezone: 'America/New_York',
-      isActive: true,
-      settings: {
-        maxQueueSize: 50,
-        avgServiceTimeDefault: 8,
-        approachingThreshold: 3,
-        noShowGraceMinutes: 5,
-        allowRemoteJoin: true
-      },
-      counters: [
-        { _id: triageCounterId, name: 'Triage Counter A', isActive: true, staffId: staffId },
-        { _id: docCounterId, name: 'Consultation Desk 1', isActive: true, staffId: null },
-        { _id: labCounterId, name: 'Lab Sampling Station', isActive: true, staffId: null }
-      ],
-      createdAt: new Date().toISOString()
-    };
-
-    const staff = {
-      _id: staffId,
-      name: 'Nurse Sarah Connor',
-      email: 'staff@queueflow.dev',
-      passwordHash: defaultPasswordHash,
-      phone: '+1 (555) 345-6789',
-      role: 'staff',
-      businessId: clinicId,
-      notificationPrefs: { approachingThreshold: 3, positionAlerts: true },
-      createdAt: new Date().toISOString()
-    };
-
-    // Cafe Demo
-    const cafeOwnerId = generateId();
-    const cafeId = generateId();
-
-    const cafeOwner = {
-      _id: cafeOwnerId,
-      name: 'Marco Rossi',
-      email: 'cafe@queueflow.dev',
-      passwordHash: defaultPasswordHash,
-      phone: '+1 (555) 876-5432',
-      role: 'owner',
-      businessId: cafeId,
-      notificationPrefs: { approachingThreshold: 2, positionAlerts: true },
-      createdAt: new Date().toISOString()
-    };
-
-    const cafe = {
-      _id: cafeId,
-      ownerId: cafeOwnerId,
-      name: 'Urban Grind Artisanal Coffee',
-      category: 'Food & Beverage',
-      description: 'Single-origin espresso bar & organic bakery. Skip the sidewalk line.',
-      phone: '+1 (555) 876-5432',
-      address: '72 Spring St, New York, NY 10012',
-      location: {
-        type: 'Point',
-        coordinates: [-73.99723, 40.72234]
-      },
-      timezone: 'America/New_York',
-      isActive: true,
-      settings: {
-        maxQueueSize: 30,
-        avgServiceTimeDefault: 3,
-        approachingThreshold: 2,
-        noShowGraceMinutes: 3,
-        allowRemoteJoin: true
-      },
-      counters: [
-        { _id: generateId(), name: 'Espresso Bar 1', isActive: true, staffId: null },
-        { _id: generateId(), name: 'Pastry & Mobile Pickup', isActive: true, staffId: null }
-      ],
-      createdAt: new Date().toISOString()
-    };
-
-    // Customers
     const customer = {
       _id: generateId(),
       name: 'Alex Turner',
@@ -143,7 +52,7 @@ class InMemoryStore {
       notificationPrefs: { approachingThreshold: 3, positionAlerts: true },
       createdAt: new Date().toISOString()
     };
-
+    
     const customer2 = {
       _id: generateId(),
       name: 'Jane Doe',
@@ -155,87 +64,100 @@ class InMemoryStore {
       notificationPrefs: { approachingThreshold: 2, positionAlerts: true },
       createdAt: new Date().toISOString()
     };
+    
+    this.users.push(customer, customer2);
 
-    // Seed default Queue & Tokens for Clinic
-    const todayStr = new Date().toISOString().split('T')[0];
-    const clinicQueueId = generateId();
+    bizTemplates.forEach((t, index) => {
+      const ownerId = generateId();
+      const bizId = generateId();
+      const prefix = t.name.split(' ')[0].toLowerCase().replace(/[^a-z]/g, '');
 
-    const clinicQueue = {
-      _id: clinicQueueId,
-      businessId: clinicId,
-      date: todayStr,
-      status: 'open',
-      tokenSeq: 3,
-      nowServing: [
-        { counterId: triageCounterId, tokenId: 'token_001' }
-      ],
-      createdAt: new Date().toISOString()
-    };
+      const owner = {
+        _id: ownerId,
+        name: t.name + ' Owner',
+        email: prefix + '@queueflow.dev',
+        passwordHash: defaultPasswordHash,
+        phone: '+1 (555) 000-' + String(1000 + index),
+        role: 'owner',
+        businessId: bizId,
+        notificationPrefs: { approachingThreshold: 3, positionAlerts: true },
+        createdAt: new Date().toISOString()
+      };
 
-    const token1 = {
-      _id: 'token_001',
-      queueId: clinicQueueId,
-      businessId: clinicId,
-      userId: customer._id,
-      walkInName: null,
-      tokenNumber: 1,
-      tokenLabel: 'A-001',
-      status: 'called',
-      counterId: triageCounterId,
-      joinedAt: new Date(Date.now() - 15 * 60000).toISOString(),
-      calledAt: new Date(Date.now() - 2 * 60000).toISOString(),
-      serviceStartedAt: null,
-      completedAt: null,
-      estimatedWaitAtJoin: 0,
-      source: 'remote',
-      notifiedFlags: { approachingSent: true, calledSent: true, skippedSent: false },
-      createdAt: new Date(Date.now() - 15 * 60000).toISOString()
-    };
+      const c1Id = generateId();
+      const c2Id = generateId();
+      const c3Id = generateId();
+      const counters = [
+        { _id: c1Id, name: 'Counter 1', isActive: true, staffId: null },
+        { _id: c2Id, name: 'Counter 2', isActive: true, staffId: null },
+        { _id: c3Id, name: 'Counter 3', isActive: true, staffId: null }
+      ];
 
-    const token2 = {
-      _id: 'token_002',
-      queueId: clinicQueueId,
-      businessId: clinicId,
-      userId: customer2._id,
-      walkInName: null,
-      tokenNumber: 2,
-      tokenLabel: 'A-002',
-      status: 'waiting',
-      counterId: null,
-      joinedAt: new Date(Date.now() - 10 * 60000).toISOString(),
-      calledAt: null,
-      serviceStartedAt: null,
-      completedAt: null,
-      estimatedWaitAtJoin: 8,
-      source: 'remote',
-      notifiedFlags: { approachingSent: false, calledSent: false, skippedSent: false },
-      createdAt: new Date(Date.now() - 10 * 60000).toISOString()
-    };
+      const biz = {
+        _id: bizId,
+        ownerId: ownerId,
+        name: t.name,
+        category: t.category,
+        description: t.desc,
+        phone: '+1 (555) 100-' + String(1000 + index),
+        address: `New York Location ${index + 1}`,
+        location: { type: 'Point', coordinates: [t.lng, t.lat] },
+        timezone: 'America/New_York',
+        isActive: true,
+        settings: {
+          maxQueueSize: 50,
+          avgServiceTimeDefault: 5 + (index % 5),
+          approachingThreshold: 3,
+          noShowGraceMinutes: 5,
+          allowRemoteJoin: true
+        },
+        counters: counters,
+        createdAt: new Date().toISOString()
+      };
 
-    const token3 = {
-      _id: 'token_003',
-      queueId: clinicQueueId,
-      businessId: clinicId,
-      userId: null,
-      walkInName: 'Walk-in John Smith',
-      tokenNumber: 3,
-      tokenLabel: 'A-003',
-      status: 'waiting',
-      counterId: null,
-      joinedAt: new Date(Date.now() - 5 * 60000).toISOString(),
-      calledAt: null,
-      serviceStartedAt: null,
-      completedAt: null,
-      estimatedWaitAtJoin: 16,
-      source: 'walk_in',
-      notifiedFlags: { approachingSent: false, calledSent: false, skippedSent: false },
-      createdAt: new Date(Date.now() - 5 * 60000).toISOString()
-    };
+      this.users.push(owner);
+      this.businesses.push(biz);
 
-    this.users.push(owner, staff, cafeOwner, customer, customer2);
-    this.businesses.push(clinic, cafe);
-    this.queues.push(clinicQueue);
-    this.tokens.push(token1, token2, token3);
+      const queueId = generateId();
+      const tokenCount = 5 + (index % 11);
+      
+      const queue = {
+        _id: queueId,
+        businessId: bizId,
+        date: todayStr,
+        status: 'open',
+        tokenSeq: tokenCount,
+        nowServing: [],
+        createdAt: new Date().toISOString()
+      };
+      this.queues.push(queue);
+
+      for(let i = 1; i <= tokenCount; i++) {
+        const tokenId = generateId();
+        const joinedAt = new Date(Date.now() - (tokenCount - i + 1) * 60000 * biz.settings.avgServiceTimeDefault).toISOString();
+        const estimatedWait = (i - 1) * biz.settings.avgServiceTimeDefault;
+        const token = {
+          _id: tokenId,
+          queueId: queueId,
+          businessId: bizId,
+          userId: null,
+          walkInName: `Walk-in Guest ${i}`,
+          tokenNumber: i,
+          tokenLabel: `A-${String(i).padStart(3, '0')}`,
+          status: 'waiting',
+          counterId: null,
+          joinedAt: joinedAt,
+          calledAt: null,
+          serviceStartedAt: null,
+          completedAt: null,
+          estimatedWaitAtJoin: estimatedWait,
+          source: (i <= 2) ? 'remote' : 'walk_in',
+          notifiedFlags: { approachingSent: false, calledSent: false, skippedSent: false },
+          createdAt: joinedAt
+        };
+        this.tokens.push(token);
+      }
+    });
   }
 }
 
