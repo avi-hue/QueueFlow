@@ -120,7 +120,7 @@ export const LoginPage = () => {
             <div className="grid grid-cols-2 gap-2 text-xs">
               <button
                 type="button"
-                onClick={() => fillCredentials('owner@queueflow.dev')}
+                onClick={() => fillCredentials('apex@queueflow.dev')}
                 className="p-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/40 text-slate-300 hover:text-white transition-all text-left flex items-center gap-2"
               >
                 <ShieldCheck className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
@@ -129,20 +129,20 @@ export const LoginPage = () => {
 
               <button
                 type="button"
-                onClick={() => fillCredentials('staff@queueflow.dev')}
-                className="p-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-white transition-all text-left flex items-center gap-2"
-              >
-                <Store className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                <span className="truncate">Clinic Staff</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => fillCredentials('cafe@queueflow.dev')}
+                onClick={() => fillCredentials('urban@queueflow.dev')}
                 className="p-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/40 text-slate-300 hover:text-white transition-all text-left flex items-center gap-2"
               >
                 <Store className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 <span className="truncate">Cafe Owner</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => fillCredentials('first@queueflow.dev')}
+                className="p-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-white transition-all text-left flex items-center gap-2"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <span className="truncate">Bank Owner</span>
               </button>
 
               <button

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/client';
+import { io } from 'socket.io-client';
 import {
   Store,
   Layers,
@@ -19,9 +20,54 @@ import {
 export const BusinessDashboard = () => {
   const { user, business, refreshBusiness, isOwner } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [queueData, setQueueData] = useState(null);
+  const [queueLoading, setQueueLoading] = useState(true);
+
+  const fetchQueue = async () => {
+    try {
+      setQueueLoading(true);
+      const res = await api.get('/queue/business/queue');
+      setQueueData(res.data.data.queue);
+    } catch (err) {
+      console.error('Failed to fetch queue', err);
+    } finally {
+      setQueueLoading(false);
+    }
+  };
+
+  const handleCallNext = async (counterId) => {
+    try {
+      await api.post('/queue/business/queue/call-next', { counterId });
+      fetchQueue();
+    } catch (err) {
+      console.error('Failed to call next', err);
+    }
+  };
+
+  const handleComplete = async (tokenId) => {
+    try {
+      await api.post(`/queue/business/queue/complete/${tokenId}`);
+      fetchQueue();
+    } catch (err) {
+      console.error('Failed to complete token', err);
+    }
+  };
 
   useEffect(() => {
     refreshBusiness();
+    fetchQueue();
+
+    const authToken = localStorage.getItem('token');
+    if (authToken) {
+      const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const socket = io(socketUrl, {
+        auth: { token: authToken }
+      });
+      socket.on('queue:updated', () => {
+        fetchQueue();
+      });
+      return () => socket.disconnect();
+    }
   }, []);
 
   if (!business) {
@@ -233,15 +279,107 @@ export const BusinessDashboard = () => {
         )}
       </div>
 
+      {/* Live Queue Section */}
+      <div className="glass-card rounded-2xl p-6 border border-slate-800">
+        <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-800">
+          <div>
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <Users className="w-5 h-5 text-indigo-400" />
+              <span>Live Queue</span>
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">Manage waiting and currently serving customers</p>
+          </div>
+          <button
+            onClick={() => fetchQueue()}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
+          >
+            Refresh
+          </button>
+        </div>
+
+        {queueLoading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto"></div>
+          </div>
+        ) : !queueData ? (
+          <div className="text-center py-8 text-slate-400 text-sm">Failed to load queue data.</div>
+        ) : (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Waiting List */}
+              <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800/50">
+                <h3 className="text-sm font-bold text-white mb-3">Waiting ({queueData.waitingTokens?.length || 0})</h3>
+                {queueData.waitingTokens && queueData.waitingTokens.length > 0 ? (
+                  <ul className="space-y-2">
+                    {queueData.waitingTokens.map((token) => (
+                      <li key={token._id} className="flex items-center justify-between p-3 rounded-lg bg-slate-900 border border-slate-800">
+                        <div>
+                          <span className="font-bold text-white text-lg">{token.tokenNumber}</span>
+                          <p className="text-xs text-slate-400">{token.customerName || 'Customer'}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-slate-500 py-2">No customers waiting.</p>
+                )}
+                {business.counters && business.counters.filter(c => c.isActive).length > 0 && queueData.waitingTokens && queueData.waitingTokens.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-slate-800">
+                    <p className="text-xs text-slate-400 mb-2">Call next to counter:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {business.counters.filter(c => c.isActive).map(counter => (
+                        <button
+                          key={counter._id}
+                          onClick={() => handleCallNext(counter._id)}
+                          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold"
+                        >
+                          {counter.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Serving / Called */}
+              <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800/50">
+                <h3 className="text-sm font-bold text-white mb-3">Serving ({queueData.calledTokens?.length || 0})</h3>
+                {queueData.calledTokens && queueData.calledTokens.length > 0 ? (
+                  <ul className="space-y-2">
+                    {queueData.calledTokens.map((token) => (
+                      <li key={token._id} className="flex items-center justify-between p-3 rounded-lg bg-slate-900 border border-slate-800">
+                        <div>
+                          <span className="font-bold text-indigo-400 text-lg">{token.tokenNumber}</span>
+                          <p className="text-xs text-slate-400">At {token.counterId?.name || 'Counter'}</p>
+                        </div>
+                        <button
+                          onClick={() => handleComplete(token._id)}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1"
+                        >
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          Complete
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-slate-500 py-2">No customers currently being served.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Module 1 System Status & Next Steps */}
       <div className="p-6 rounded-2xl bg-indigo-950/30 border border-indigo-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-indigo-400 font-bold text-sm mb-1">
             <CheckCircle className="w-4 h-4" />
-            <span>Module 1 Implemented: Auth & Business Basics Complete</span>
+            <span>Module 1 & 2 Implemented</span>
           </div>
           <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
-            User authentication, role-based authorization, business profiles, 2dsphere geolocation schema, and counter configurations are active. Ready for Phase 2 (Core Queue State Machine & Token Lifecycle).
+            User authentication, business profiles, counters, and core live queue state machine are active. Real-time Socket.IO events integrated.
           </p>
         </div>
 
@@ -257,3 +395,4 @@ export const BusinessDashboard = () => {
     </div>
   );
 };
+
