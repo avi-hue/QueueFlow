@@ -1,22 +1,20 @@
-import React from 'react';
+﻿import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import {
-  Compass,
-  Clock,
-  Store,
-  ShieldCheck,
-  TrendingUp,
-  BellRing,
-  ArrowRight,
-  Sparkles,
-  Users,
-  CheckCircle2,
-  Check
-} from 'lucide-react';
+import { ArrowRight, BellRing, CheckCircle2, Clock, Compass, ShieldCheck, Store, Users } from 'lucide-react';
+
+const Feature = ({ icon: Icon, title, text }) => (
+  <div className="panel p-5">
+    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-md border border-[#D5CCC0] bg-[#F0EAE1] text-[#2F7D6D]">
+      <Icon className="h-5 w-5" />
+    </div>
+    <h3 className="text-base font-bold text-[#1F2933]">{title}</h3>
+    <p className="mt-2 text-sm leading-6 text-[#667085]">{text}</p>
+  </div>
+);
 
 export const LandingPage = () => {
-  const { login, isAuthenticated, user } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleQuickDemoLogin = async (email, password, redirectPath) => {
@@ -29,180 +27,106 @@ export const LandingPage = () => {
   };
 
   return (
-    <div className="relative overflow-hidden pt-12 pb-24">
-      {/* Background Decorative Gradients */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-tr from-indigo-600/20 via-purple-600/10 to-transparent blur-3xl pointer-events-none -z-10" />
-      <div className="absolute bottom-20 right-10 w-[500px] h-[300px] bg-indigo-500/10 blur-3xl pointer-events-none -z-10" />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Hero Section */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-semibold mb-6">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Virtual Queue & Smart Wait Prediction Platform</span>
+    <div className="page-wrap space-y-12 py-10 lg:py-14">
+      <section className="grid items-center gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+        <div>
+          <div className="mb-5 inline-flex items-center gap-2 rounded-sm border border-[#E6DED2] bg-[#FFFDF9] px-3 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-[#2F7D6D]">
+            <span className="beacon bg-[#2F7D6D]" />
+            Live queue dispatch platform
           </div>
-
-          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight">
-            Stop Waiting. <br />
-            <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Start Flowing.
-            </span>
+          <h1 className="max-w-3xl text-4xl font-bold leading-tight tracking-normal text-[#1F2933] sm:text-5xl lg:text-6xl">
+            Queue operations that feel calm, exact, and human.
           </h1>
-
-          <p className="text-lg sm:text-xl text-slate-300 mb-8 leading-relaxed">
-            The issue is not long queues — it is <span className="text-white font-medium">uncertainty</span> about the wait. QueueFlow lets customers discover nearby businesses, compare live lines, receive digital tokens, and get notified when their turn arrives.
+          <p className="mt-5 max-w-2xl text-base leading-7 text-[#667085] sm:text-lg">
+            QueueFlow helps customers discover live lines and gives businesses a crisp dispatch desk for counters, tokens, wait estimates, and real-time calls.
           </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              to="/register"
-              className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-xl shadow-indigo-600/30 transition-all duration-200 flex items-center justify-center gap-2 group"
-            >
-              <span>Get Started Free</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link to="/register" className="btn-primary h-11 px-5">
+              Start QueueFlow
+              <ArrowRight className="h-4 w-4" />
             </Link>
-
-            <Link
-              to="/login"
-              className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-semibold text-slate-200 hover:text-white bg-slate-900/80 hover:bg-slate-800 border border-slate-700/80 transition-all duration-200 flex items-center justify-center gap-2"
-            >
-              <span>Sign In to Account</span>
+            <Link to="/discover" className="btn-secondary h-11 px-5">
+              Browse Queues
             </Link>
           </div>
         </div>
 
-        {/* 1-Click Interactive Demo Card */}
-        <div className="max-w-4xl mx-auto glass-card rounded-2xl p-6 sm:p-8 mb-20 border border-indigo-500/20 shadow-2xl shadow-indigo-950/50">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 mb-6 border-b border-slate-800 gap-4">
+        <div className="panel-focus p-4 sm:p-5">
+          <div className="section-rule flex items-center justify-between pb-4">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                <h3 className="text-lg font-bold text-white">Live Interactive Demo Accounts</h3>
-              </div>
-              <p className="text-xs text-slate-400 mt-1">
-                Explore QueueFlow instantly with pre-seeded demo accounts (Module 1 Auth & Business Basics)
-              </p>
+              <p className="label-caps">Dispatch Manifest</p>
+              <h2 className="mt-1 text-xl font-bold text-[#1F2933]">Apex Health Clinic</h2>
             </div>
-            <span className="text-xs font-mono px-3 py-1 rounded-lg bg-slate-800/80 text-slate-300 border border-slate-700">
-              Pass: Password123!
+            <span className="status-badge status-open">
+              <span className="beacon bg-[#2F7D6D]" />
+              Queue Open
             </span>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Owner Demo */}
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex flex-col justify-between hover:border-indigo-500/40 transition-all">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold uppercase px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                    Business Owner
-                  </span>
-                  <ShieldCheck className="w-4 h-4 text-indigo-400" />
-                </div>
-                <h4 className="font-bold text-white text-base">Apex Health Clinic</h4>
-                <p className="text-xs text-slate-400 mt-1 mb-4">
-                  Full control: edit venue profile, configure operating hours, and manage counters.
-                </p>
+          <div className="grid gap-3 py-4 sm:grid-cols-3">
+            {[
+              ['WAITING', '18'],
+              ['SERVING', '04'],
+              ['EST. WAIT', '24m']
+            ].map(([label, value]) => (
+              <div key={label} className="panel-muted p-3">
+                <p className="label-caps">{label}</p>
+                <p className="metric-number mt-2 text-3xl font-bold">{value}</p>
               </div>
-              <button
-                onClick={() => handleQuickDemoLogin('owner@queueflow.dev', 'Password123!', '/dashboard')}
-                className="w-full py-2 px-3 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors flex items-center justify-center gap-1.5"
-              >
-                <span>Login as Owner</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* Staff Demo */}
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex flex-col justify-between hover:border-cyan-500/40 transition-all">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold uppercase px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                    Staff Member
-                  </span>
-                  <Store className="w-4 h-4 text-cyan-400" />
+            ))}
+          </div>
+          <div className="divide-y divide-[#E6DED2] border-y border-[#E6DED2]">
+            {['A-104', 'A-105', 'A-106'].map((token, index) => (
+              <div key={token} className="queue-row">
+                <div>
+                  <p className="metric-number text-lg font-bold">{token}</p>
+                  <p className="text-xs text-[#667085]">{index === 0 ? 'Now serving' : `${index + 1} in line`}</p>
                 </div>
-                <h4 className="font-bold text-white text-base">Sarah Connor (Staff)</h4>
-                <p className="text-xs text-slate-400 mt-1 mb-4">
-                  Assigned to Triage Counter A at Apex Health Clinic. Access live queue management.
-                </p>
+                <span className={index === 0 ? 'status-badge status-open' : 'status-badge status-warn'}>
+                  {index === 0 ? 'Counter 02' : 'Waiting'}
+                </span>
               </div>
-              <button
-                onClick={() => handleQuickDemoLogin('staff@queueflow.dev', 'Password123!', '/dashboard')}
-                className="w-full py-2 px-3 text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-lg transition-colors flex items-center justify-center gap-1.5"
-              >
-                <span>Login as Staff</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* Customer Demo */}
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex flex-col justify-between hover:border-emerald-500/40 transition-all">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    Customer
-                  </span>
-                  <Users className="w-4 h-4 text-emerald-400" />
-                </div>
-                <h4 className="font-bold text-white text-base">Alex Turner</h4>
-                <p className="text-xs text-slate-400 mt-1 mb-4">
-                  Remote queue seeker. Track wait time predictions and receive approaching alerts.
-                </p>
-              </div>
-              <button
-                onClick={() => handleQuickDemoLogin('customer@queueflow.dev', 'Password123!', '/discover')}
-                className="w-full py-2 px-3 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors flex items-center justify-center gap-1.5"
-              >
-                <span>Login as Customer</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            ))}
           </div>
         </div>
+      </section>
 
-        {/* Feature Highlights Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
-          <div className="glass-card glass-card-hover p-6 rounded-2xl">
-            <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-4">
-              <Compass className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">Nearby Discovery</h3>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              Find venues by location radius with real-time queue size, opening status, and live wait estimations.
-            </p>
+      <section className="panel p-5 sm:p-6">
+        <div className="section-rule mb-5 flex flex-col justify-between gap-3 pb-4 sm:flex-row sm:items-end">
+          <div>
+            <p className="label-caps">Demo Access</p>
+            <h2 className="mt-1 text-xl font-bold text-[#1F2933]">Try the app with seeded roles</h2>
           </div>
-
-          <div className="glass-card glass-card-hover p-6 rounded-2xl">
-            <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-4">
-              <Clock className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">Smart Wait Prediction</h3>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              Weighted algorithms combine rolling averages, historical day-of-week trends, and active counter capacity.
-            </p>
-          </div>
-
-          <div className="glass-card glass-card-hover p-6 rounded-2xl">
-            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-4">
-              <BellRing className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">Real-Time Alerts</h3>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              In-app push notifications ping customers when their turn approaches or when called to a specific counter.
-            </p>
-          </div>
-
-          <div className="glass-card glass-card-hover p-6 rounded-2xl">
-            <div className="w-12 h-12 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 mb-4">
-              <TrendingUp className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">Business Operations</h3>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              Multi-counter calling, walk-in management, no-show timers, and peak-hour utilization heatmaps.
-            </p>
-          </div>
+          <span className="rounded-sm border border-[#E6DED2] bg-[#F0EAE1] px-3 py-1.5 text-xs font-semibold text-[#3F4946]">Password123!</span>
         </div>
-      </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {[
+            ['Business Owner', 'owner@queueflow.dev', '/dashboard', ShieldCheck, 'Configure profile, counters, and queue rules.'],
+            ['Staff Member', 'staff@queueflow.dev', '/dashboard', Store, 'Call next tokens and complete service.'],
+            ['Customer', 'customer@queueflow.dev', '/discover', Users, 'Discover nearby queues and track a token.']
+          ].map(([role, email, path, Icon, text]) => (
+            <div key={role} className="panel-muted flex flex-col justify-between p-4">
+              <div>
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="label-caps">{role}</span>
+                  <Icon className="h-4 w-4 text-[#2F7D6D]" />
+                </div>
+                <p className="font-bold text-[#1F2933]">{email}</p>
+                <p className="mt-2 text-sm leading-5 text-[#667085]">{text}</p>
+              </div>
+              <button onClick={() => handleQuickDemoLogin(email, 'Password123!', path)} className="btn-primary mt-4 w-full">
+                Enter as {role.split(' ')[0]}
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Feature icon={Compass} title="Nearby Discovery" text="Live business cards show queue size, status, distance, and wait estimates." />
+        <Feature icon={Clock} title="Wait Prediction" text="Service-time settings keep customer expectations clear before they join." />
+        <Feature icon={BellRing} title="Realtime Calls" text="Socket updates move tokens without customers or staff refreshing screens." />
+        <Feature icon={CheckCircle2} title="Counter Control" text="Staff can call, serve, complete, and keep counters visible at a glance." />
+      </section>
     </div>
   );
 };
