@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Compass, Search, MapPin, Clock, Users } from 'lucide-react';
+﻿import React, { useState, useEffect } from 'react';
+import { Clock, Compass, MapPin, Search, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/client';
 import { io } from 'socket.io-client';
@@ -22,16 +22,9 @@ export const DiscoverPage = () => {
 
   useEffect(() => {
     fetchBusinesses();
-
-    // Keep businesses in sync in real-time
     const socket = io();
-    socket.on('public:queue:updated', () => {
-      fetchBusinesses(); // Refresh list to get latest wait times & sizes
-    });
-
-    return () => {
-      socket.disconnect();
-    };
+    socket.on('public:queue:updated', fetchBusinesses);
+    return () => socket.disconnect();
   }, []);
 
   const handleJoinQueue = async (businessId) => {
@@ -45,98 +38,86 @@ export const DiscoverPage = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <div className="pb-6 border-b border-slate-800">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-2.5">
-          <Compass className="w-7 h-7 text-indigo-400" />
-          <span>Discover Nearby Queues</span>
+    <div className="page-wrap space-y-6">
+      <div className="section-rule pb-6">
+        <p className="label-caps">Customer Discovery</p>
+        <h1 className="mt-2 flex items-center gap-2 text-3xl font-bold text-[#1F2933]">
+          <Compass className="h-7 w-7 text-[#2F7D6D]" />
+          Discover Nearby Queues
         </h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1">
-          Explore live queues in your area, compare estimated wait times, and join virtually.
-        </p>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667085]">Compare queue length, distance, and wait estimates before joining remotely.</p>
       </div>
 
-      {/* Search & Filter Mockup Bar */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="panel-muted flex flex-col gap-3 p-3 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search clinics, banks, cafes, DMV..."
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500"
-          />
+          <Search className="input-icon" />
+          <input type="text" placeholder="Search clinics, banks, cafes, service desks..." className="input-field pl-10" />
         </div>
-        <button className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
-          <MapPin className="w-4 h-4 text-indigo-400" />
-          <span>Within 5 miles</span>
+        <button className="btn-secondary">
+          <MapPin className="h-4 w-4 text-[#2F7D6D]" />
+          Within 5 miles
         </button>
       </div>
 
-      {/* Discovery List */}
       {loading ? (
-        <div className="text-center text-slate-400 py-8">Loading businesses...</div>
+        <div className="panel p-8 text-center text-sm text-[#667085]">Loading businesses...</div>
       ) : businesses.length === 0 ? (
-        <div className="text-center text-slate-400 py-8">No businesses found.</div>
+        <div className="panel p-8 text-center text-sm text-[#667085]">No businesses found.</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {businesses.map((biz) => (
-            <div
-              key={biz._id}
-              className="glass-card glass-card-hover rounded-2xl p-6 border border-slate-800 flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                    {biz.category || 'General'}
-                  </span>
-                  <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    {biz.isActive ? 'Open' : 'Closed'}
-                  </span>
-                </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {businesses.map((biz) => {
+            const waiting = biz.stats ? biz.stats.totalWaiting : 0;
+            const wait = biz.stats ? biz.stats.estimatedWaitMins : 0;
+            const canJoin = biz.isActive && biz.settings?.allowRemoteJoin !== false;
 
-                <h3 className="text-lg font-bold text-white">{biz.name}</h3>
-                <p className="text-xs text-slate-400 mt-1 flex items-center justify-between gap-1">
-                  <span className="flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                    <span>{biz.address}</span>
-                  </span>
-                  <span className="text-indigo-400 font-semibold">{biz.distanceMiles} mi away</span>
-                </p>
+            return (
+              <article key={biz._id} className="panel flex flex-col justify-between p-5 transition hover:border-[#D5CCC0] hover:bg-white">
+                <div>
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <span className="status-badge status-warn">{biz.category || 'General'}</span>
+                    <span className={biz.isActive ? 'status-badge status-open' : 'status-badge status-danger'}>
+                      <span className={`beacon ${biz.isActive ? 'bg-[#2F7D6D]' : 'bg-[#B44A3F]'}`} />
+                      {biz.isActive ? 'Open' : 'Closed'}
+                    </span>
+                  </div>
 
-                {/* Stats Box */}
-                <div className="grid grid-cols-2 gap-3 my-4 p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-                  <div>
-                    <span className="text-[11px] text-slate-400 uppercase font-semibold">Live Queue</span>
-                    <div className="text-xl font-extrabold text-white flex items-center gap-1 mt-0.5">
-                      <Users className="w-4 h-4 text-indigo-400" />
-                      <span>{biz.stats ? biz.stats.totalWaiting : 0} waiting</span>
+                  <h2 className="text-xl font-bold text-[#1F2933]">{biz.name}</h2>
+                  <div className="mt-2 flex flex-col gap-1 text-sm text-[#667085] sm:flex-row sm:items-center sm:justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" />
+                      <span className="line-clamp-1">{biz.address}</span>
+                    </span>
+                    <span className="font-semibold text-[#2F7D6D]">{biz.distanceMiles} mi</span>
+                  </div>
+
+                  <div className="my-5 grid grid-cols-2 gap-3">
+                    <div className="panel-muted p-3">
+                      <p className="label-caps">Live Queue</p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <Users className="h-4 w-4 text-[#2F7D6D]" />
+                        <span className="metric-number text-2xl font-bold">{waiting}</span>
+                        <span className="text-xs text-[#667085]">waiting</span>
+                      </div>
+                    </div>
+                    <div className="panel-muted p-3">
+                      <p className="label-caps">Est. Wait</p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-[#C98A2E]" />
+                        <span className="metric-number text-2xl font-bold">{wait}</span>
+                        <span className="text-xs text-[#667085]">min</span>
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <span className="text-[11px] text-slate-400 uppercase font-semibold">Est. Wait</span>
-                    <div className="text-xl font-extrabold text-white flex items-center gap-1 mt-0.5">
-                      <Clock className="w-4 h-4 text-purple-400" />
-                      <span>~{biz.stats ? biz.stats.estimatedWaitMins : 0} min</span>
-                    </div>
-                  </div>
                 </div>
-              </div>
 
-              <div className="pt-2">
-                <button
-                  onClick={() => handleJoinQueue(biz._id)}
-                  disabled={!biz.isActive || biz.settings?.allowRemoteJoin === false}
-                  className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-                >
-                  <span>Join Virtual Queue</span>
+                <button onClick={() => handleJoinQueue(biz._id)} disabled={!canJoin} className="btn-primary w-full">
+                  {canJoin ? 'Join Virtual Queue' : 'Remote Join Unavailable'}
                 </button>
-              </div>
-            </div>
-          ))}
+              </article>
+            );
+          })}
         </div>
       )}
     </div>
   );
 };
-

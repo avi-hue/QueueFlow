@@ -1,25 +1,21 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/client';
-import { Settings, Save, ArrowLeft, CheckCircle, AlertCircle, Clock, ShieldCheck, MapPin } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle, Clock, Save, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const BusinessSettingsPage = () => {
   const { business, refreshBusiness } = useAuth();
-
   const [name, setName] = useState('');
   const [category, setCategory] = useState('Healthcare');
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
-
-  // Queue settings
   const [avgServiceTimeDefault, setAvgServiceTimeDefault] = useState(5);
   const [maxQueueSize, setMaxQueueSize] = useState(0);
   const [approachingThreshold, setApproachingThreshold] = useState(3);
   const [noShowGraceMinutes, setNoShowGraceMinutes] = useState(5);
   const [allowRemoteJoin, setAllowRemoteJoin] = useState(true);
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -31,7 +27,6 @@ export const BusinessSettingsPage = () => {
       setDescription(business.description || '');
       setAddress(business.address || '');
       setPhone(business.phone || '');
-
       if (business.settings) {
         setAvgServiceTimeDefault(business.settings.avgServiceTimeDefault || 5);
         setMaxQueueSize(business.settings.maxQueueSize || 0);
@@ -63,7 +58,6 @@ export const BusinessSettingsPage = () => {
           allowRemoteJoin
         }
       });
-
       setSuccess('Venue profile and queue settings updated successfully!');
       await refreshBusiness();
     } catch (err) {
@@ -74,68 +68,31 @@ export const BusinessSettingsPage = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      {/* Header */}
-      <div className="pb-6 border-b border-slate-800">
-        <Link
-          to="/dashboard"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white mb-2 transition-colors"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Dashboard</span>
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="section-rule mb-6 pb-6">
+        <Link to="/dashboard" className="mb-2 inline-flex items-center gap-1.5 text-xs font-bold text-[#667085] transition hover:text-[#1F2933]">
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back to Dashboard
         </Link>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-2.5">
-          <Settings className="w-7 h-7 text-indigo-400" />
-          <span>Venue & Queue Settings</span>
+        <p className="label-caps">Venue Configuration</p>
+        <h1 className="mt-2 flex items-center gap-2 text-3xl font-bold text-[#1F2933]">
+          <Settings className="h-7 w-7 text-[#2F7D6D]" />
+          Venue & Queue Settings
         </h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1">
-          Configure business details, queue limits, and prediction baseline parameters.
-        </p>
+        <p className="mt-2 text-sm text-[#667085]">Configure business details, queue limits, and ETA baseline parameters.</p>
       </div>
 
-      {error && (
-        <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-      {success && (
-        <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-sm flex items-center gap-2">
-          <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{success}</span>
-        </div>
-      )}
+      {error && <Notice tone="danger" icon={AlertCircle} text={error} />}
+      {success && <Notice tone="open" icon={CheckCircle} text={success} />}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Business Profile */}
-        <div className="glass-card rounded-2xl p-6 border border-slate-800 space-y-4">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-2">
-            General Information
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <form onSubmit={handleSubmit} className="mt-4 space-y-5">
+        <section className="panel p-5">
+          <p className="label-caps mb-4">General Information</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Business Name" value={name} onChange={setName} required />
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                Business Name
-              </label>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                Category
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
-              >
+              <label className="label-caps mb-1.5 block">Category</label>
+              <select value={category} onChange={(e) => setCategory(e.target.value)} className="input-field">
                 <option value="Healthcare">Healthcare</option>
                 <option value="Bank & Finance">Bank & Finance</option>
                 <option value="Retail">Retail</option>
@@ -146,146 +103,54 @@ export const BusinessSettingsPage = () => {
               </select>
             </div>
           </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-              Address
-            </label>
-            <input
-              type="text"
-              required
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
-            />
+          <div className="mt-4">
+            <Field label="Address" value={address} onChange={setAddress} required />
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                Phone
-              </label>
-              <input
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                Description
-              </label>
-              <input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
-              />
-            </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <Field label="Phone" value={phone} onChange={setPhone} />
+            <Field label="Description" value={description} onChange={setDescription} />
           </div>
-        </div>
+        </section>
 
-        {/* Queue & Prediction Parameters */}
-        <div className="glass-card rounded-2xl p-6 border border-slate-800 space-y-4">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-purple-400" />
-            <span>Queue & ETA Prediction Settings</span>
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                Avg Service Time Default (min)
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={120}
-                required
-                value={avgServiceTimeDefault}
-                onChange={(e) => setAvgServiceTimeDefault(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
-              />
-              <p className="text-[11px] text-slate-500 mt-1">Used by prediction algorithm as baseline</p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                Approaching Alert Threshold (people ahead)
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={50}
-                required
-                value={approachingThreshold}
-                onChange={(e) => setApproachingThreshold(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
-              />
-              <p className="text-[11px] text-slate-500 mt-1">Sends "Your turn is approaching" alert</p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                No-Show Grace Period (min)
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={30}
-                required
-                value={noShowGraceMinutes}
-                onChange={(e) => setNoShowGraceMinutes(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
-              />
-              <p className="text-[11px] text-slate-500 mt-1">Timer before called token expires</p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                Max Queue Capacity (0 = unlimited)
-              </label>
-              <input
-                type="number"
-                min={0}
-                max={1000}
-                required
-                value={maxQueueSize}
-                onChange={(e) => setMaxQueueSize(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
-              />
-              <p className="text-[11px] text-slate-500 mt-1">Stops remote joins if limit reached</p>
-            </div>
+        <section className="panel p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <Clock className="h-4 w-4 text-[#C98A2E]" />
+            <p className="label-caps">Queue & ETA Prediction</p>
           </div>
-
-          <div className="pt-2">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={allowRemoteJoin}
-                onChange={(e) => setAllowRemoteJoin(e.target.checked)}
-                className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-700 bg-slate-900"
-              />
-              <span className="text-sm text-slate-200 font-medium">
-                Allow customers to join queue remotely from mobile/web
-              </span>
-            </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Avg Service Time Default (min)" type="number" min={1} max={120} value={avgServiceTimeDefault} onChange={setAvgServiceTimeDefault} required helper="Used by prediction algorithm as baseline" />
+            <Field label="Approaching Alert Threshold" type="number" min={1} max={50} value={approachingThreshold} onChange={setApproachingThreshold} required helper="People ahead before approaching alert" />
+            <Field label="No-Show Grace Period (min)" type="number" min={1} max={30} value={noShowGraceMinutes} onChange={setNoShowGraceMinutes} required helper="Timer before called token expires" />
+            <Field label="Max Queue Capacity" type="number" min={0} max={1000} value={maxQueueSize} onChange={setMaxQueueSize} required helper="0 means unlimited" />
           </div>
-        </div>
+          <label className="mt-5 flex cursor-pointer items-center gap-3 rounded-md border border-[#E6DED2] bg-[#F0EAE1] p-3">
+            <input type="checkbox" checked={allowRemoteJoin} onChange={(e) => setAllowRemoteJoin(e.target.checked)} className="h-4 w-4 rounded border-[#D5CCC0] text-[#2F7D6D] focus:ring-[#2F7D6D]" />
+            <span className="text-sm font-semibold text-[#1F2933]">Allow customers to join queue remotely from mobile/web</span>
+          </label>
+        </section>
 
         <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 disabled:opacity-50"
-          >
-            <Save className="w-4 h-4" />
-            <span>{loading ? 'Saving...' : 'Save Settings'}</span>
+          <button type="submit" disabled={loading} className="btn-primary h-11 px-5">
+            <Save className="h-4 w-4" />
+            {loading ? 'Saving...' : 'Save Settings'}
           </button>
         </div>
       </form>
     </div>
   );
 };
+
+const Field = ({ label, value, onChange, helper, type = 'text', ...props }) => (
+  <div>
+    <label className="label-caps mb-1.5 block">{label}</label>
+    <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="input-field" {...props} />
+    {helper && <p className="mt-1 text-[11px] text-[#667085]">{helper}</p>}
+  </div>
+);
+
+const Notice = ({ tone, icon: Icon, text }) => (
+  <div className={`mb-4 flex items-center gap-2 rounded-md border p-3 text-sm font-semibold ${tone === 'danger' ? 'border-[#E8B8B2] bg-[#FFF0EE] text-[#B44A3F]' : 'border-[#B9D4C8] bg-[#EBF2EE] text-[#2F7D6D]'}`}>
+    <Icon className="h-4 w-4 shrink-0" />
+    <span>{text}</span>
+  </div>
+);

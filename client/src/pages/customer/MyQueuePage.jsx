@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Clock, AlertCircle, ArrowLeft, Radio, Users } from 'lucide-react';
+﻿import React, { useEffect, useState } from 'react';
+import { Clock, Radio, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import api from '../../api/client';
@@ -13,11 +13,8 @@ export const MyQueuePage = () => {
       const response = await api.get('/queue/my-token');
       setTokenData(response.data.data);
     } catch (error) {
-      if (error.response?.status === 404) {
-        setTokenData(null);
-      } else {
-        console.error('Failed to fetch token:', error);
-      }
+      if (error.response?.status === 404) setTokenData(null);
+      else console.error('Failed to fetch token:', error);
     } finally {
       setLoading(false);
     }
@@ -25,65 +22,38 @@ export const MyQueuePage = () => {
 
   useEffect(() => {
     fetchToken();
-
-    const authToken = localStorage.getItem('token');
+    const authToken = localStorage.getItem('token') || localStorage.getItem('queueflow_token');
     if (!authToken) return;
 
-    // We assume backend is on the same host or we connect to standard port, 
-    // or use import.meta.env.VITE_API_URL if needed.
-    // Given api/client points to some endpoint, we'll try to extract the base URL.
     const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-    const socket = io(socketUrl, {
-      auth: {
-        token: authToken
-      }
-    });
-
-    socket.on('connect', () => {
-      console.log('Socket connected:', socket.id);
-    });
-
-    socket.on('token:updated', (data) => {
-      // Re-fetch or update state
-      fetchToken();
-    });
-
-    socket.on('queue:updated', (data) => {
-      // Re-fetch or update state
-      fetchToken();
-    });
-
-    return () => {
-      socket.disconnect();
-    };
+    const socket = io(socketUrl, { auth: { token: authToken } });
+    socket.on('token:updated', fetchToken);
+    socket.on('queue:updated', fetchToken);
+    return () => socket.disconnect();
   }, []);
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-12 flex justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+      <div className="mx-auto flex max-w-2xl justify-center px-4 py-12">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#D5CCC0] border-t-[#2F7D6D]" />
       </div>
     );
   }
 
   if (!tokenData || !tokenData.token) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-12">
-        <div className="glass-card rounded-3xl p-8 border border-slate-800 text-center relative overflow-hidden shadow-2xl">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto mb-5">
-            <Clock className="w-8 h-8" />
+      <div className="mx-auto max-w-2xl px-4 py-12">
+        <div className="panel-focus p-8 text-center">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-lg border border-[#E6DED2] bg-[#F0EAE1] text-[#2F7D6D]">
+            <Clock className="h-8 w-8" />
           </div>
-
-          <h1 className="text-2xl font-extrabold text-white mb-2">No Active Token</h1>
-          <p className="text-sm text-slate-400 max-w-md mx-auto mb-6">
-            You are currently not queued at any venue. Join a live queue from the discovery page to track your digital token, real-time position, and wait estimation.
+          <p className="label-caps">Token Desk</p>
+          <h1 className="mt-2 text-2xl font-bold text-[#1F2933]">No Active Token</h1>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#667085]">
+            Join a live queue from discovery to track your token, position, and estimated wait time.
           </p>
-
-          <Link
-            to="/discover"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-lg shadow-indigo-600/30 transition-all"
-          >
-            <span>Discover Nearby Queues</span>
+          <Link to="/discover" className="btn-primary mt-6 h-11 px-5">
+            Discover Nearby Queues
           </Link>
         </div>
       </div>
@@ -93,57 +63,73 @@ export const MyQueuePage = () => {
   const token = tokenData.token;
   const position = token.position;
   const estimatedWaitMins = token.estimatedWaitMins;
+  const tokenLabel = token.tokenLabel || token.tokenNumber;
+  const isCalled = token.status === 'called';
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-12">
-      <div className="glass-card rounded-3xl p-8 border border-slate-800 text-center relative overflow-hidden shadow-2xl">
-        <div className="w-20 h-20 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto mb-5">
-          <span className="text-3xl font-black">{token.tokenLabel || token.tokenNumber}</span>
-        </div>
-
-        <h1 className="text-2xl font-extrabold text-white mb-2">Your Token Status</h1>
-        <p className="text-sm text-slate-400 max-w-md mx-auto mb-6">
-          Venue: {token.businessName || 'Unknown Venue'}
-        </p>
-
-        <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto mb-8">
-          <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 flex flex-col items-center">
-            <Users className="w-5 h-5 text-indigo-400 mb-2" />
-            <span className="text-xs text-slate-400 uppercase font-semibold">Position</span>
-            <span className="text-2xl font-bold text-white mt-1">{position}</span>
-          </div>
-          <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 flex flex-col items-center">
-            <Clock className="w-5 h-5 text-purple-400 mb-2" />
-            <span className="text-xs text-slate-400 uppercase font-semibold">Wait Time</span>
-            <span className="text-2xl font-bold text-white mt-1">~{estimatedWaitMins}m</span>
+    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className={`panel-focus overflow-hidden ${isCalled ? 'border-2 border-[#2F7D6D]' : ''}`}>
+        <div className="border-b border-[#E6DED2] bg-[#F0EAE1] px-6 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="label-caps">Digital Queue Token</p>
+              <h1 className="mt-1 text-xl font-bold text-[#1F2933]">{token.businessName || 'Unknown Venue'}</h1>
+            </div>
+            <span className={isCalled ? 'status-badge status-open' : 'status-badge status-warn'}>
+              <span className={`beacon ${isCalled ? 'bg-[#2F7D6D]' : 'bg-[#C98A2E]'}`} />
+              {token.status}
+            </span>
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 mb-8 max-w-sm mx-auto text-left text-sm space-y-2 text-slate-400">
-          <div className="flex items-center gap-2 text-slate-300 font-semibold">
-            <Radio className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
-            <span>Status: {token.status}</span>
+        <div className="p-6 text-center sm:p-8">
+          <div className="mx-auto flex min-h-28 max-w-xs items-center justify-center rounded-lg border border-[#E6DED2] bg-white px-6 py-5">
+            <span className="metric-number text-5xl font-bold tracking-[0.04em] text-[#1F2933]">{tokenLabel}</span>
           </div>
-          {token.status === 'called' && (
-            <p className="text-emerald-400 font-bold mt-2">Please proceed to counter {token.counterId?.name || 'Assigned Counter'}!</p>
+
+          {isCalled && (
+            <p className="mx-auto mt-5 max-w-md rounded-md border border-[#B9D4C8] bg-[#EBF2EE] px-4 py-3 text-sm font-bold text-[#2F7D6D]">
+              Please proceed to {token.counterId?.name || 'your assigned counter'}.
+            </p>
           )}
-        </div>
 
-        <button
-          onClick={async () => {
-            if (window.confirm('Are you sure you want to cancel your token?')) {
-              try {
-                await api.post(`/queue/cancel/${token._id}`);
-                fetchToken();
-              } catch (error) {
-                console.error('Cancel failed', error);
+          <div className="mx-auto mt-6 grid max-w-md grid-cols-2 gap-3">
+            <div className="panel-muted p-4">
+              <Users className="mx-auto mb-2 h-5 w-5 text-[#2F7D6D]" />
+              <p className="label-caps">Position</p>
+              <p className="metric-number mt-1 text-3xl font-bold">{position}</p>
+            </div>
+            <div className="panel-muted p-4">
+              <Clock className="mx-auto mb-2 h-5 w-5 text-[#C98A2E]" />
+              <p className="label-caps">Est. Wait</p>
+              <p className="metric-number mt-1 text-3xl font-bold">{estimatedWaitMins}m</p>
+            </div>
+          </div>
+
+          <div className="mx-auto mt-6 max-w-md border-y border-[#E6DED2] py-4 text-left">
+            <div className="flex items-center gap-2 text-sm font-bold text-[#1F2933]">
+              <Radio className="h-4 w-4 text-[#2F7D6D]" />
+              Live status: {token.status}
+            </div>
+            <p className="mt-1 text-sm text-[#667085]">This card updates through the live queue connection when staff call or complete tokens.</p>
+          </div>
+
+          <button
+            onClick={async () => {
+              if (window.confirm('Are you sure you want to cancel your token?')) {
+                try {
+                  await api.post(`/queue/cancel/${token._id}`);
+                  fetchToken();
+                } catch (error) {
+                  console.error('Cancel failed', error);
+                }
               }
-            }
-          }}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-red-600/20 hover:bg-red-600/40 text-red-400 font-bold text-sm transition-all"
-        >
-          Cancel Token
-        </button>
+            }}
+            className="btn-danger mt-6"
+          >
+            Cancel Token
+          </button>
+        </div>
       </div>
     </div>
   );

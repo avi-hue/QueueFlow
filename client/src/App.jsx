@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
@@ -18,7 +18,7 @@ export function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-['Plus_Jakarta_Sans',sans-serif]">
+        <div className="app-shell flex flex-col">
           <Navbar />
           <main className="flex-1">
             <Routes>
@@ -70,13 +70,12 @@ export function App() {
           </main>
 
           {/* Minimalist Footer */}
-          <footer className="border-t border-slate-900 py-6 text-center text-xs text-slate-500">
+          <footer className="border-t border-[#E6DED2] bg-[#FFFDF9] py-5 text-xs text-[#667085]">
             <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
               <p>© {new Date().getFullYear()} QueueFlow. Stop Waiting. Start Flowing.</p>
-              <div className="flex items-center gap-4 text-slate-400">
-                <span>Phase 0 & 1 Complete</span>
-                <span>•</span>
-                <span className="text-indigo-400 font-mono">Module 1 (Auth & Business Basics)</span>
+              <div className="flex items-center gap-3 font-medium">
+                <span className="beacon bg-[#2F7D6D]" />
+                <span>Realtime queue operations active</span>
               </div>
             </div>
           </footer>
@@ -87,3 +86,4 @@ export function App() {
 }
 
 export default App;
+
