@@ -81,18 +81,18 @@ Run the full integration test suite:
 ```bash
 npm test
 ```
-**Results:** 15 passing tests across `auth.test.js` and `business.test.js` in ~4.6 seconds.
+**Results:** 28 passing tests across `auth.test.js`, `business.test.js`, `queue.test.js`, and `prediction.test.js`.
 
 ---
 
-## 6. Endpoints Implemented (Module 1)
+## 6. Endpoints Implemented
 
 Base Path: `/api/v1`
 
 ### Health Check
 - `GET /health` — API status confirmation
 
-### Auth
+### Auth (Module 1)
 - `POST /auth/register` — Register customer or business owner (with business co-creation)
 - `POST /auth/login` — Login user, returns access token
 - `POST /auth/refresh` — Refresh token endpoint
@@ -109,8 +109,26 @@ Base Path: `/api/v1`
 - `POST /business/staff` — Add staff member (Owner only)
 - `DELETE /business/staff/:id` — Remove staff member (Owner only)
 
+### Queue Operations (Module 2: Smart Queue Management)
+- `POST /queue/join` — Customer joins queue (checks capacity & duplicate active tickets)
+- `GET /queue/my-token` — Customer live active ticket position, assigned counter & dynamic ETA
+- `POST /queue/cancel/:tokenId` — Customer cancel ticket
+- `GET /queue/public/:businessId` — Public business queue snapshot
+- `GET /queue/business/queue` — Staff/Owner complete live queue state machine
+- `PATCH /queue/business/queue/status` — Owner toggle queue status (`open`, `paused`, `closed`)
+- `POST /queue/business/queue/call-next` — Staff call next waiting ticket to counter
+- `POST /queue/business/queue/start-service/:tokenId` — Staff transition token to serving
+- `POST /queue/business/queue/complete/:tokenId` — Staff complete token service & update historical metrics
+- `POST /queue/business/queue/skip/:tokenId` — Staff skip no-show customer
+- `POST /queue/business/queue/walk-in` — Staff generate walk-in token
+
+### Smart Wait-Time Prediction (Module 3)
+- `GET /queue/prediction/:businessId` — Public & client detailed prediction breakdown (hybrid live rolling durations, historical hourly rush patterns, multi-counter concurrency, confidence score)
+
 ### Public Discovery
+- `GET /businesses` — Public venue directory with haversine distance and live queue wait-times
 - `GET /businesses/:id` — Public business information
+
 
 ---
 

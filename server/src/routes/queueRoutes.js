@@ -7,6 +7,9 @@ const { requireRole, requireBusinessAccess } = require('../middleware/role');
 // Public route: business queue status summary
 router.get('/public/:businessId', queueController.getPublicQueueStatus);
 
+// Public route: Smart Wait-Time Prediction breakdown (Module 3)
+router.get('/prediction/:businessId', queueController.getPredictionBreakdown);
+
 // Customer endpoints (Protected)
 router.use(authenticate);
 

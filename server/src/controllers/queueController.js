@@ -75,6 +75,23 @@ async function getPublicQueueStatus(req, res, next) {
 }
 
 /**
+ * Public: Get detailed Smart Wait-Time Prediction breakdown for a business (Module 3)
+ */
+async function getPredictionBreakdown(req, res, next) {
+  try {
+    const { businessId } = req.params;
+    const predictionData = await queueService.getBusinessPrediction(businessId);
+    res.status(200).json({
+      status: 'success',
+      data: predictionData
+    });
+  } catch (err) {
+    res.status(404).json({ status: 'fail', message: err.message });
+  }
+}
+
+
+/**
  * Staff / Owner: Get full queue view for business dashboard
  */
 async function getBusinessQueue(req, res, next) {
@@ -213,6 +230,7 @@ module.exports = {
   getMyToken,
   cancelToken,
   getPublicQueueStatus,
+  getPredictionBreakdown,
   getBusinessQueue,
   updateQueueStatus,
   callNext,
@@ -221,3 +239,4 @@ module.exports = {
   skipToken,
   addWalkIn
 };
+

@@ -10,6 +10,7 @@ class InMemoryStore {
     this.queues = [];
     this.tokens = [];
     this.logs = [];
+    this.hourlyStats = [];
     this.seed();
   }
 
@@ -19,6 +20,7 @@ class InMemoryStore {
     this.queues = [];
     this.tokens = [];
     this.logs = [];
+    this.hourlyStats = [];
   }
 
   seed() {
@@ -71,11 +73,13 @@ class InMemoryStore {
       const ownerId = generateId();
       const bizId = generateId();
       const prefix = t.name.split(' ')[0].toLowerCase().replace(/[^a-z]/g, '');
+      const ownerEmail = (index === 0) ? 'owner@queueflow.dev' : (index === 1 ? 'cafe@queueflow.dev' : prefix + '@queueflow.dev');
+      const ownerName = (index === 0) ? 'Dr. Robert Vance' : (index === 1 ? 'Marco Rossi' : t.name + ' Owner');
 
       const owner = {
         _id: ownerId,
-        name: t.name + ' Owner',
-        email: prefix + '@queueflow.dev',
+        name: ownerName,
+        email: ownerEmail,
         passwordHash: defaultPasswordHash,
         phone: '+1 (555) 000-' + String(1000 + index),
         role: 'owner',
@@ -88,10 +92,27 @@ class InMemoryStore {
       const c2Id = generateId();
       const c3Id = generateId();
       const counters = [
-        { _id: c1Id, name: 'Counter 1', isActive: true, staffId: null },
-        { _id: c2Id, name: 'Counter 2', isActive: true, staffId: null },
-        { _id: c3Id, name: 'Counter 3', isActive: true, staffId: null }
+        { _id: c1Id, name: (index === 0) ? 'Triage Counter A' : 'Counter 1', isActive: true, staffId: null },
+        { _id: c2Id, name: (index === 0) ? 'Consultation Desk 1' : 'Counter 2', isActive: true, staffId: null },
+        { _id: c3Id, name: (index === 0) ? 'Lab Sampling Station' : 'Counter 3', isActive: true, staffId: null }
       ];
+
+      if (index === 0) {
+        const staffId = generateId();
+        const staff = {
+          _id: staffId,
+          name: 'Nurse Sarah Connor',
+          email: 'staff@queueflow.dev',
+          passwordHash: defaultPasswordHash,
+          phone: '+1 (555) 345-6789',
+          role: 'staff',
+          businessId: bizId,
+          notificationPrefs: { approachingThreshold: 3, positionAlerts: true },
+          createdAt: new Date().toISOString()
+        };
+        counters[0].staffId = staffId;
+        this.users.push(staff);
+      }
 
       const biz = {
         _id: bizId,
@@ -132,30 +153,133 @@ class InMemoryStore {
       };
       this.queues.push(queue);
 
+      if (index === 0) {
+        // Pre-seed 2 completed tokens earlier today for Apex Health Clinic so live rolling metrics exist immediately
+        const c1Started = new Date(Date.now() - 32 * 60000).toISOString();
+        const c1Ended = new Date(Date.now() - 26 * 60000).toISOString(); // 6 mins duration
+        this.tokens.push({
+          _id: generateId(),
+          queueId: queueId,
+          businessId: bizId,
+          userId: null,
+          walkInName: 'Morning Guest 1',
+          tokenNumber: 901,
+          tokenLabel: 'A-901',
+          status: 'completed',
+          counterId: counters[0]._id,
+          joinedAt: new Date(Date.now() - 45 * 60000).toISOString(),
+          calledAt: c1Started,
+          serviceStartedAt: c1Started,
+          completedAt: c1Ended,
+          estimatedWaitAtJoin: 5,
+          source: 'walk_in',
+          notifiedFlags: { approachingSent: true, calledSent: true, skippedSent: false },
+          createdAt: c1Started
+        });
+
+        const c2Started = new Date(Date.now() - 20 * 60000).toISOString();
+        const c2Ended = new Date(Date.now() - 15 * 60000).toISOString(); // 5 mins duration
+        this.tokens.push({
+          _id: generateId(),
+          queueId: queueId,
+          businessId: bizId,
+          userId: null,
+          walkInName: 'Morning Guest 2',
+          tokenNumber: 902,
+          tokenLabel: 'A-902',
+          status: 'completed',
+          counterId: counters[1]._id,
+          joinedAt: new Date(Date.now() - 30 * 60000).toISOString(),
+          calledAt: c2Started,
+          serviceStartedAt: c2Started,
+          completedAt: c2Ended,
+          estimatedWaitAtJoin: 5,
+          source: 'walk_in',
+          notifiedFlags: { approachingSent: true, calledSent: true, skippedSent: false },
+          createdAt: c2Started
+        });
+      }
+
       for(let i = 1; i <= tokenCount; i++) {
         const tokenId = generateId();
         const joinedAt = new Date(Date.now() - (tokenCount - i + 1) * 60000 * biz.settings.avgServiceTimeDefault).toISOString();
         const estimatedWait = (i - 1) * biz.settings.avgServiceTimeDefault;
+        const assignedUserId = (index === 0 && i === 1) ? customer._id : (index === 0 && i === 2 ? customer2._id : null);
+        const isCalledFirst = (index === 0 && i === 1);
+
+        if (isCalledFirst) {
+          queue.nowServing.push({ counterId: counters[0]._id, tokenId });
+        }
+
         const token = {
           _id: tokenId,
           queueId: queueId,
           businessId: bizId,
-          userId: null,
-          walkInName: `Walk-in Guest ${i}`,
+          userId: assignedUserId,
+          walkInName: isCalledFirst ? null : `Walk-in Guest ${i}`,
           tokenNumber: i,
           tokenLabel: `A-${String(i).padStart(3, '0')}`,
-          status: 'waiting',
-          counterId: null,
+          status: isCalledFirst ? 'called' : 'waiting',
+          counterId: isCalledFirst ? counters[0]._id : null,
           joinedAt: joinedAt,
-          calledAt: null,
+          calledAt: isCalledFirst ? new Date(Date.now() - 2 * 60000).toISOString() : null,
           serviceStartedAt: null,
           completedAt: null,
           estimatedWaitAtJoin: estimatedWait,
           source: (i <= 2) ? 'remote' : 'walk_in',
-          notifiedFlags: { approachingSent: false, calledSent: false, skippedSent: false },
+          notifiedFlags: { approachingSent: isCalledFirst, calledSent: isCalledFirst, skippedSent: false },
           createdAt: joinedAt
         };
         this.tokens.push(token);
+      }
+
+      // Seed 7 days of historical HourlyStat patterns (Module 3: Smart Wait-Time Prediction)
+      const baseServiceTime = biz.settings.avgServiceTimeDefault || 5;
+      const activeCountersNum = counters.filter(c => c.isActive).length || 1;
+
+      for (let dayOffset = 1; dayOffset <= 7; dayOffset++) {
+        const histDateObj = new Date(Date.now() - dayOffset * 24 * 60 * 60 * 1000);
+        const histDateStr = histDateObj.toISOString().split('T')[0];
+        const histDayOfWeek = histDateObj.getDay();
+
+        for (let hour = 8; hour <= 18; hour++) {
+          let timeMultiplier = 1.0;
+          let arrivalBase = 8;
+
+          if (hour >= 11 && hour <= 13) {
+            timeMultiplier = 1.35; // peak congestion / longer service
+            arrivalBase = 18;
+          } else if (hour >= 16 && hour <= 18) {
+            timeMultiplier = 1.15;
+            arrivalBase = 14;
+          } else if (hour <= 9) {
+            timeMultiplier = 0.9;
+            arrivalBase = 5;
+          }
+
+          const avgServiceMin = Number((baseServiceTime * timeMultiplier + ((hour + dayOffset) % 3) * 0.2).toFixed(1));
+          const arrivals = arrivalBase + ((hour * 7 + dayOffset * 3) % 5);
+          const served = Math.max(1, Math.floor(arrivals * 0.92));
+          const avgWaitMin = Math.max(1, Math.round(((arrivals / 2) * avgServiceMin) / activeCountersNum));
+
+          this.hourlyStats.push({
+            _id: generateId(),
+            businessId: bizId,
+            date: histDateStr,
+            dayOfWeek: histDayOfWeek,
+            hour: hour,
+            arrivals,
+            served,
+            skipped: (arrivals % 4 === 0) ? 1 : 0,
+            cancelled: (arrivals % 6 === 0) ? 1 : 0,
+            avgWaitMin,
+            avgServiceMin,
+            peakQueueLength: Math.round(arrivals * 0.7),
+            activeCounters: activeCountersNum,
+            createdAt: histDateObj.toISOString(),
+            updatedAt: histDateObj.toISOString()
+          });
+        }
       }
     });
   }
@@ -644,12 +768,88 @@ class TokenModel {
   }
 }
 
+class HourlyStatModel {
+  constructor(data) {
+    this._id = data._id ? data._id.toString() : generateId();
+    this.businessId = data.businessId ? data.businessId.toString() : null;
+    this.date = data.date;
+    this.dayOfWeek = data.dayOfWeek !== undefined ? Number(data.dayOfWeek) : 0;
+    this.hour = Number(data.hour);
+    this.arrivals = Number(data.arrivals || 0);
+    this.served = Number(data.served || 0);
+    this.skipped = Number(data.skipped || 0);
+    this.cancelled = Number(data.cancelled || 0);
+    this.avgWaitMin = Number(data.avgWaitMin || 0);
+    this.avgServiceMin = Number(data.avgServiceMin || 0);
+    this.peakQueueLength = Number(data.peakQueueLength || 0);
+    this.activeCounters = Number(data.activeCounters || 1);
+    this.createdAt = data.createdAt || new Date().toISOString();
+    this.updatedAt = data.updatedAt || new Date().toISOString();
+  }
+
+  toObject() {
+    return JSON.parse(JSON.stringify(this));
+  }
+
+  async save() {
+    this.updatedAt = new Date().toISOString();
+    const plainObj = { ...this };
+    const idx = store.hourlyStats.findIndex((s) => s._id === this._id);
+    if (idx >= 0) {
+      store.hourlyStats[idx] = plainObj;
+    } else {
+      store.hourlyStats.push(plainObj);
+    }
+    return this;
+  }
+
+  static findOne(query) {
+    const promise = (async () => {
+      const found = store.hourlyStats.find((s) => {
+        if (query.businessId && String(s.businessId) !== String(query.businessId)) return false;
+        if (query.date && s.date !== query.date) return false;
+        if (query.dayOfWeek !== undefined && s.dayOfWeek !== query.dayOfWeek) return false;
+        if (query.hour !== undefined && s.hour !== query.hour) return false;
+        if (query._id && s._id !== query._id.toString()) return false;
+        return true;
+      });
+      return found ? new HourlyStatModel(found) : null;
+    })();
+    return promise;
+  }
+
+  static findById(id) {
+    return HourlyStatModel.findOne({ _id: id });
+  }
+
+  static find(query = {}) {
+    const promise = (async () => {
+      const results = store.hourlyStats.filter((s) => {
+        if (query.businessId && String(s.businessId) !== String(query.businessId)) return false;
+        if (query.date && s.date !== query.date) return false;
+        if (query.dayOfWeek !== undefined && s.dayOfWeek !== query.dayOfWeek) return false;
+        if (query.hour !== undefined && s.hour !== query.hour) return false;
+        return true;
+      });
+      return results.map((s) => new HourlyStatModel(s));
+    })();
+    return promise;
+  }
+
+  static async deleteMany() {
+    store.hourlyStats = [];
+    return { deletedCount: 0 };
+  }
+}
+
 module.exports = {
   store,
   User: UserModel,
   Business: BusinessModel,
   Queue: QueueModel,
   Token: TokenModel,
+  HourlyStat: HourlyStatModel,
   generateId
 };
+
 
