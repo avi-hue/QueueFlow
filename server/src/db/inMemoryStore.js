@@ -88,6 +88,36 @@ class InMemoryStore {
         createdAt: new Date().toISOString()
       };
 
+      if (index === 0) {
+        // Support both apex@queueflow.dev (UI 1-click demo) and owner@queueflow.dev
+        const apexOwner = {
+          _id: generateId(),
+          name: 'Dr. Robert Vance',
+          email: 'apex@queueflow.dev',
+          passwordHash: defaultPasswordHash,
+          phone: '+1 (555) 000-1000',
+          role: 'owner',
+          businessId: bizId,
+          notificationPrefs: { approachingThreshold: 3, positionAlerts: true },
+          createdAt: new Date().toISOString()
+        };
+        this.users.push(apexOwner);
+      } else if (index === 1) {
+        // Support both urban@queueflow.dev (UI 1-click demo) and cafe@queueflow.dev
+        const urbanOwner = {
+          _id: generateId(),
+          name: 'Marco Rossi',
+          email: 'urban@queueflow.dev',
+          passwordHash: defaultPasswordHash,
+          phone: '+1 (555) 000-1001',
+          role: 'owner',
+          businessId: bizId,
+          notificationPrefs: { approachingThreshold: 3, positionAlerts: true },
+          createdAt: new Date().toISOString()
+        };
+        this.users.push(urbanOwner);
+      }
+
       const c1Id = generateId();
       const c2Id = generateId();
       const c3Id = generateId();
@@ -332,8 +362,19 @@ class UserModel {
 
   static findOne(query) {
     const promise = (async () => {
+      const aliasMap = {
+        'apex@queueflow.dev': 'owner@queueflow.dev',
+        'urban@queueflow.dev': 'cafe@queueflow.dev'
+      };
+      const queryEmail = query.email ? query.email.toLowerCase().trim() : null;
+
       const found = store.users.find((u) => {
-        if (query.email && u.email.toLowerCase() !== query.email.toLowerCase()) return false;
+        if (queryEmail) {
+          const uEmail = u.email.toLowerCase();
+          if (uEmail !== queryEmail && (!aliasMap[queryEmail] || uEmail !== aliasMap[queryEmail])) {
+            return false;
+          }
+        }
         if (query._id && u._id !== query._id.toString()) return false;
         if (query.businessId && String(u.businessId) !== String(query.businessId)) return false;
         if (query.role && u.role !== query.role) return false;

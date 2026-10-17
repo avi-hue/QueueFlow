@@ -59,6 +59,17 @@ const seedData = async () => {
     ownerUser.businessId = apexClinic._id;
     await ownerUser.save();
 
+    // 2b. Create Apex Clinic Co-Owner for 1-click UI demo
+    const apexOwner = new User({
+      name: 'Dr. Robert Vance',
+      email: 'apex@queueflow.dev',
+      passwordHash: 'Password123!',
+      phone: '+1 (555) 234-5679',
+      role: 'owner',
+      businessId: apexClinic._id
+    });
+    await apexOwner.save();
+
     // 3. Create Staff Member for Apex Clinic
     const staffUser = new User({
       name: 'Nurse Sarah Connor',
@@ -83,6 +94,15 @@ const seedData = async () => {
       role: 'owner'
     });
     await cafeOwner.save();
+
+    const urbanOwner = new User({
+      name: 'Marco Rossi',
+      email: 'urban@queueflow.dev',
+      passwordHash: 'Password123!',
+      phone: '+1 (555) 876-5433',
+      role: 'owner'
+    });
+    await urbanOwner.save();
 
     const urbanCafe = new Business({
       ownerId: cafeOwner._id,
