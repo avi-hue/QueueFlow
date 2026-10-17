@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Clock, Radio, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { io } from 'socket.io-client';
@@ -105,6 +105,34 @@ export const MyQueuePage = () => {
               <p className="metric-number mt-1 text-3xl font-bold">{estimatedWaitMins}m</p>
             </div>
           </div>
+
+          {/* Module 3: Smart Wait-Time Prediction Breakdown */}
+          {token.prediction && (
+            <div className="mx-auto mt-6 max-w-md panel p-4 text-left border border-[#E6DED2] bg-[#FAF7F0]">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#1F2933] flex items-center gap-1.5">
+                  <span className="beacon bg-[#2F7D6D]" />
+                  Smart Wait-Time Prediction
+                </span>
+                <span className="status-badge status-open uppercase text-[10px]">
+                  {token.prediction.confidence} Confidence
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-3 text-xs">
+                <div>
+                  <span className="label-caps block text-[10px]">Active Counters</span>
+                  <span className="metric-number font-bold text-[#1F2933] mt-0.5 block">{token.prediction.activeCounters} open</span>
+                </div>
+                <div>
+                  <span className="label-caps block text-[10px]">Blended Service Pace</span>
+                  <span className="metric-number font-bold text-[#1F2933] mt-0.5 block">~{token.prediction.blendedAvgServiceTime}m / token</span>
+                </div>
+              </div>
+              <p className="mt-2.5 pt-2 border-t border-[#E6DED2] text-[11px] text-[#667085]">
+                Blends current queue velocity with historical time-of-day rush patterns.
+              </p>
+            </div>
+          )}
 
           <div className="mx-auto mt-6 max-w-md border-y border-[#E6DED2] py-4 text-left">
             <div className="flex items-center gap-2 text-sm font-bold text-[#1F2933]">

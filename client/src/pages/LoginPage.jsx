@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { AlertCircle, ArrowRight, Lock, Mail, ShieldCheck, Store, User } from 'lucide-react';
@@ -31,10 +31,22 @@ export const LoginPage = () => {
     }
   };
 
-  const fillCredentials = (demoEmail) => {
+  const handleDemoLogin = async (demoEmail) => {
     setEmail(demoEmail);
     setPassword('Password123!');
     setError('');
+    setLoading(true);
+
+    try {
+      const user = await login(demoEmail, 'Password123!');
+      if (from) navigate(from, { replace: true });
+      else if (user.role === 'customer') navigate('/discover');
+      else navigate('/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Invalid credentials. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -101,7 +113,7 @@ export const LoginPage = () => {
               ['Bank Owner', 'first@queueflow.dev', ShieldCheck],
               ['Customer', 'customer@queueflow.dev', User]
             ].map(([label, demoEmail, Icon]) => (
-              <button key={label} type="button" onClick={() => fillCredentials(demoEmail)} className="flex items-center gap-2 rounded-md border border-[#E6DED2] bg-white p-2 text-left font-semibold text-[#3F4946] transition hover:bg-[#F0EAE1]">
+              <button key={label} type="button" disabled={loading} onClick={() => handleDemoLogin(demoEmail)} className="flex items-center gap-2 rounded-md border border-[#E6DED2] bg-white p-2 text-left font-semibold text-[#3F4946] transition hover:bg-[#F0EAE1] disabled:opacity-60">
                 <Icon className="h-3.5 w-3.5 shrink-0 text-[#2F7D6D]" />
                 <span className="truncate">{label}</span>
               </button>
