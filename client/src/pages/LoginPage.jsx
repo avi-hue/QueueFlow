@@ -105,13 +105,15 @@ export const LoginPage = () => {
         </form>
 
         <div className="mt-7 border-t border-[#E6DED2] pt-5">
-          <p className="label-caps mb-3 text-center">Demo Accounts</p>
+          <p className="label-caps mb-3 text-center">Simulation Demo Accounts (1-Click Login)</p>
           <div className="grid grid-cols-2 gap-2 text-xs">
             {[
               ['Clinic Owner', 'apex@queueflow.dev', ShieldCheck],
-              ['Cafe Owner', 'urban@queueflow.dev', Store],
-              ['Bank Owner', 'first@queueflow.dev', ShieldCheck],
-              ['Customer', 'customer@queueflow.dev', User]
+              ['Clinic Staff', 'staff@queueflow.dev', Store],
+              ['Customer: Alex', 'customer@queueflow.dev', User],
+              ['Customer: Jane', 'jane@queueflow.dev', User],
+              ['Customer: Liam', 'liam@queueflow.dev', User],
+              ['Cafe Owner', 'urban@queueflow.dev', Store]
             ].map(([label, demoEmail, Icon]) => (
               <button key={label} type="button" disabled={loading} onClick={() => handleDemoLogin(demoEmail)} className="flex items-center gap-2 rounded-md border border-[#E6DED2] bg-white p-2 text-left font-semibold text-[#3F4946] transition hover:bg-[#F0EAE1] disabled:opacity-60">
                 <Icon className="h-3.5 w-3.5 shrink-0 text-[#2F7D6D]" />

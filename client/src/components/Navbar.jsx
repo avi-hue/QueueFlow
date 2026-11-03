@@ -1,7 +1,8 @@
-﻿import React from 'react';
+import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Layers, LogOut, Store, Clock, Compass, ShieldCheck, Settings } from 'lucide-react';
+import { NotificationBell } from './NotificationBell';
+import { Layers, LogOut, Store, Clock, Compass, ShieldCheck, Settings, BarChart3 } from 'lucide-react';
 
 export const Navbar = () => {
   const { user, business, logout, isAuthenticated, isOwner, isStaff, isCustomer } = useAuth();
@@ -59,6 +60,10 @@ export const Navbar = () => {
                     <Store className="h-4 w-4" />
                     Dashboard
                   </Link>
+                  <Link to="/dashboard/analytics" className={navClass('/dashboard/analytics')}>
+                    <BarChart3 className="h-4 w-4" />
+                    Analytics
+                  </Link>
                   <Link to="/dashboard/counters" className={navClass('/dashboard/counters')}>
                     Counters
                   </Link>
@@ -82,6 +87,7 @@ export const Navbar = () => {
         <div className="flex items-center gap-3">
           {isAuthenticated ? (
             <>
+              <NotificationBell />
               <div className="hidden text-right sm:block">
                 <div className="flex items-center justify-end gap-1.5 text-sm font-bold text-[#1F2933]">
                   {user.name}

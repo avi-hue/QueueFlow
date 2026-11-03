@@ -3,12 +3,19 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/client';
 import { io } from 'socket.io-client';
-import { AlertCircle, ArrowRight, CheckCircle, Clock, Layers, Radio, Settings, Store, Users } from 'lucide-react';
+import { AlertCircle, ArrowRight, CheckCircle, Clock, Layers, Radio, Settings, Store, Users, BarChart3, Plus, UserPlus, X, SkipForward } from 'lucide-react';
+import { BusinessAnalytics } from './BusinessAnalytics';
 
 export const BusinessDashboard = () => {
   const { business, refreshBusiness, isOwner } = useAuth();
   const [queueData, setQueueData] = useState(null);
   const [queueLoading, setQueueLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('queue'); // 'queue' | 'analytics'
+  const [showWalkInModal, setShowWalkInModal] = useState(false);
+  const [walkInName, setWalkInName] = useState('');
+  const [walkInCounter, setWalkInCounter] = useState('');
+  const [walkInLoading, setWalkInLoading] = useState(false);
+  const [walkInError, setWalkInError] = useState('');
 
   const fetchQueue = async () => {
     try {
@@ -40,6 +47,38 @@ export const BusinessDashboard = () => {
     }
   };
 
+  const handleSkip = async (tokenId) => {
+    if (!window.confirm('Mark this customer token as skipped / no-show?')) return;
+    try {
+      await api.post(`/queue/business/queue/skip/${tokenId}`);
+      fetchQueue();
+    } catch (err) {
+      console.error('Failed to skip token', err);
+    }
+  };
+
+  const handleAddWalkIn = async (e) => {
+    e.preventDefault();
+    if (!walkInName.trim()) return;
+    setWalkInError('');
+    setWalkInLoading(true);
+
+    try {
+      await api.post('/queue/business/queue/walk-in', {
+        walkInName: walkInName.trim(),
+        counterId: walkInCounter || undefined
+      });
+      setWalkInName('');
+      setWalkInCounter('');
+      setShowWalkInModal(false);
+      fetchQueue();
+    } catch (err) {
+      setWalkInError(err.response?.data?.message || 'Failed to issue walk-in token');
+    } finally {
+      setWalkInLoading(false);
+    }
+  };
+
   useEffect(() => {
     refreshBusiness();
     fetchQueue();
@@ -49,7 +88,17 @@ export const BusinessDashboard = () => {
     const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     const socket = io(socketUrl, { auth: { token: authToken } });
     socket.on('queue:updated', fetchQueue);
-    return () => socket.disconnect();
+    socket.on('public:queue:updated', fetchQueue);
+
+    // 4-second polling fallback for guaranteed real-time synchronization
+    const interval = setInterval(() => {
+      fetchQueue();
+    }, 4000);
+
+    return () => {
+      clearInterval(interval);
+      socket.disconnect();
+    };
   }, []);
 
   if (!business) {
@@ -70,6 +119,7 @@ export const BusinessDashboard = () => {
   const totalCountersCount = business.counters?.length || 0;
   const waitingCount = queueData?.waitingTokens?.length || 0;
   const servingCount = queueData?.calledTokens?.length || 0;
+  const completedCount = queueData?.recentCompletedTokens?.length || 0;
 
   return (
     <div className="page-wrap space-y-6">
@@ -89,12 +139,19 @@ export const BusinessDashboard = () => {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Link to="/dashboard/counters" className="btn-secondary">
+            <button
+              onClick={() => setShowWalkInModal(true)}
+              className="btn-secondary h-10 px-3 text-xs font-bold"
+            >
+              <UserPlus className="h-4 w-4 text-[#2F7D6D]" />
+              Add Walk-in
+            </button>
+            <Link to="/dashboard/counters" className="btn-secondary h-10 px-3 text-xs font-bold">
               <Layers className="h-4 w-4 text-[#2F7D6D]" />
               Counters ({totalCountersCount})
             </Link>
             {isOwner && (
-              <Link to="/dashboard/settings" className="btn-primary">
+              <Link to="/dashboard/settings" className="btn-primary h-10 px-3 text-xs font-bold">
                 <Settings className="h-4 w-4" />
                 Venue Settings
               </Link>
@@ -103,124 +160,336 @@ export const BusinessDashboard = () => {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <Stat label="Waiting" value={waitingCount} hint="Customers in line" icon={Users} />
-        <Stat label="Serving" value={servingCount} hint="Called to counters" icon={Store} />
-        <Stat label="Est. Wait Time" value={`~${queueData?.stats?.estimatedWaitMins ?? 0}m`} hint={queueData?.stats?.prediction ? `${queueData.stats.prediction.confidence} confidence` : "Dynamic ETA"} icon={Clock} />
-        <Stat label="Counters Active" value={`${activeCountersCount}/${totalCountersCount}`} hint="Ready to call tokens" icon={Layers} />
-        <Stat label="Service Pace" value={`~${queueData?.stats?.prediction?.blendedAvgServiceTime ?? business.settings?.avgServiceTimeDefault ?? 5}m`} hint={queueData?.stats?.prediction?.liveSampleCount ? `Live: ${queueData.stats.prediction.liveAvgServiceTime}m` : "Historical baseline"} icon={Clock} />
-      </section>
+      {/* View Switcher Tabs */}
+      <div className="flex border-b border-[#E6DED2] gap-1">
+        <button
+          onClick={() => setActiveTab('queue')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition ${
+            activeTab === 'queue'
+              ? 'border-[#2F7D6D] text-[#2F7D6D]'
+              : 'border-transparent text-[#667085] hover:text-[#1F2933]'
+          }`}
+        >
+          <Radio className="h-4 w-4" />
+          <span>Live Queue Triage</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('analytics')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition ${
+            activeTab === 'analytics'
+              ? 'border-[#2F7D6D] text-[#2F7D6D]'
+              : 'border-transparent text-[#667085] hover:text-[#1F2933]'
+          }`}
+        >
+          <BarChart3 className="h-4 w-4" />
+          <span>Business Analytics Dashboard</span>
+        </button>
+      </div>
 
-      <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-        <div className="panel p-5">
-          <div className="section-rule mb-4 flex items-center justify-between pb-3">
-            <div>
-              <p className="label-caps">Counter Lane Selector</p>
-              <h2 className="mt-1 text-lg font-bold text-[#1F2933]">Service Counters</h2>
-            </div>
-            <Link to="/dashboard/counters" className="text-xs font-bold text-[#2F7D6D]">Configure</Link>
-          </div>
+      {activeTab === 'analytics' ? (
+        <BusinessAnalytics />
+      ) : (
+        <>
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <Stat label="Waiting" value={waitingCount} hint="Customers in line" icon={Users} />
+            <Stat label="Serving" value={servingCount} hint="Called to counters" icon={Store} />
+            <Stat label="Est. Wait Time" value={`~${queueData?.stats?.estimatedWaitMins ?? 0}m`} hint={queueData?.stats?.prediction ? `${queueData.stats.prediction.confidence} confidence` : "Dynamic ETA"} icon={Clock} />
+            <Stat label="Counters Active" value={`${activeCountersCount}/${totalCountersCount}`} hint="Ready to call tokens" icon={Layers} />
+            <Stat label="Service Pace" value={`~${queueData?.stats?.prediction?.blendedAvgServiceTime ?? business.settings?.avgServiceTimeDefault ?? 5}m`} hint={queueData?.stats?.prediction?.liveSampleCount ? `Live: ${queueData.stats.prediction.liveAvgServiceTime}m` : "Historical baseline"} icon={Clock} />
+          </section>
 
-          {business.counters?.length ? (
-            <div className="space-y-2">
-              {business.counters.map((counter, idx) => (
-                <div key={counter._id || idx} className="flex items-center justify-between rounded-md border border-[#E6DED2] bg-white p-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className={`beacon ${counter.isActive ? 'bg-[#2F7D6D]' : 'bg-[#9CA3AF]'}`} />
-                      <h3 className="text-sm font-bold text-[#1F2933]">{counter.name}</h3>
-                    </div>
-                    <p className="mt-1 text-xs text-[#667085]">{counter.isActive ? 'Ready for serving' : 'Inactive / paused'}</p>
-                  </div>
-                  <span className={counter.isActive ? 'status-badge status-open' : 'status-badge status-warn'}>{counter.isActive ? 'Active' : 'Offline'}</span>
+          <section className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+            {/* Service Counters Column */}
+            <div className="panel p-5">
+              <div className="section-rule mb-4 flex items-center justify-between pb-3">
+                <div>
+                  <p className="label-caps">Counter Lane Selector</p>
+                  <h2 className="mt-1 text-lg font-bold text-[#1F2933]">Service Counters</h2>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-md border border-[#E6DED2] bg-[#F0EAE1] p-4 text-sm text-[#667085]">
-              No counters set up yet.
-            </div>
-          )}
-        </div>
+                <Link to="/dashboard/counters" className="text-xs font-bold text-[#2F7D6D]">Configure</Link>
+              </div>
 
-        <div className="panel p-5">
-          <div className="section-rule mb-4 flex flex-col justify-between gap-3 pb-3 sm:flex-row sm:items-center">
-            <div>
-              <p className="label-caps">Live Queue Triage</p>
-              <h2 className="mt-1 flex items-center gap-2 text-lg font-bold text-[#1F2933]">
-                <Radio className="h-4 w-4 text-[#2F7D6D]" />
-                Queue Desk
-              </h2>
-            </div>
-            <button onClick={fetchQueue} className="btn-secondary h-9">Refresh</button>
-          </div>
-
-          {queueLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#D5CCC0] border-t-[#2F7D6D]" />
-            </div>
-          ) : !queueData ? (
-            <div className="py-8 text-center text-sm text-[#667085]">Failed to load queue data.</div>
-          ) : (
-            <div className="grid gap-4 xl:grid-cols-2">
-              <QueueColumn title="Waiting" count={waitingCount} empty="No customers waiting.">
-                {queueData.waitingTokens?.map((token) => (
-                  <li key={token._id} className="queue-row">
-                    <div>
-                      <p className="metric-number text-lg font-bold">{token.tokenNumber}</p>
-                      <p className="text-xs text-[#667085]">{token.customerName || 'Customer'}</p>
+              {business.counters?.length ? (
+                <div className="space-y-2">
+                  {business.counters.map((counter, idx) => (
+                    <div key={counter._id || idx} className="flex items-center justify-between rounded-md border border-[#E6DED2] bg-white p-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className={`beacon ${counter.isActive ? 'bg-[#2F7D6D]' : 'bg-[#9CA3AF]'}`} />
+                          <h3 className="text-sm font-bold text-[#1F2933]">{counter.name}</h3>
+                        </div>
+                        <p className="mt-1 text-xs text-[#667085]">{counter.isActive ? 'Ready for serving' : 'Inactive / paused'}</p>
+                      </div>
+                      <span className={counter.isActive ? 'status-badge status-open' : 'status-badge status-warn'}>{counter.isActive ? 'Active' : 'Offline'}</span>
                     </div>
-                    <span className="status-badge status-warn">Waiting</span>
-                  </li>
-                ))}
-                {activeCounters.length > 0 && waitingCount > 0 && (
-                  <li className="mt-3 border-t border-[#E6DED2] pt-3">
-                    <p className="label-caps mb-2">Call next to counter</p>
-                    <div className="flex flex-wrap gap-2">
-                      {activeCounters.map((counter) => (
-                        <button key={counter._id} onClick={() => handleCallNext(counter._id)} className="btn-primary h-9 px-3 text-xs">
-                          {counter.name}
-                        </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-md border border-[#E6DED2] bg-[#F0EAE1] p-4 text-sm text-[#667085]">
+                  No counters set up yet.
+                </div>
+              )}
+
+              {/* Quick Add Walk-In Card */}
+              <div className="mt-5 rounded-lg border border-[#E6DED2] bg-[#FAF7F0] p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-bold text-[#1F2933] flex items-center gap-1.5">
+                    <UserPlus className="h-3.5 w-3.5 text-[#2F7D6D]" />
+                    Issue Walk-in Token
+                  </h3>
+                </div>
+                <p className="text-xs text-[#667085] mb-3">
+                  Assign a token for in-person visitors with their customer name.
+                </p>
+                <button
+                  onClick={() => setShowWalkInModal(true)}
+                  className="btn-primary w-full h-8 text-xs font-bold flex items-center justify-center gap-1.5"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Issue Token for Guest
+                </button>
+              </div>
+            </div>
+
+            {/* Live Queue Desk Column */}
+            <div className="panel p-5">
+              <div className="section-rule mb-4 flex flex-col justify-between gap-3 pb-3 sm:flex-row sm:items-center">
+                <div>
+                  <p className="label-caps">Live Queue Triage</p>
+                  <h2 className="mt-1 flex items-center gap-2 text-lg font-bold text-[#1F2933]">
+                    <Radio className="h-4 w-4 text-[#2F7D6D]" />
+                    Queue Desk
+                  </h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowWalkInModal(true)}
+                    className="btn-primary h-8 px-2.5 text-xs font-bold flex items-center gap-1"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Walk-In
+                  </button>
+                  <button onClick={fetchQueue} className="btn-secondary h-8 px-2.5 text-xs">
+                    Refresh
+                  </button>
+                </div>
+              </div>
+
+              {queueLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#D5CCC0] border-t-[#2F7D6D]" />
+                </div>
+              ) : !queueData ? (
+                <div className="py-8 text-center text-sm text-[#667085]">Failed to load queue data.</div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    {/* WAITING QUEUE COLUMN */}
+                    <QueueColumn title="Waiting" count={waitingCount} empty="No customers waiting.">
+                      {queueData.waitingTokens?.map((token) => (
+                        <li key={token._id} className="p-3 hover:bg-[#FAF7F0] transition">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="metric-number text-base font-bold text-[#1F2933]">
+                                  {token.tokenLabel || token.tokenNumber}
+                                </span>
+                                <span className="text-sm font-bold text-[#1F2933]">
+                                  {token.customerName || 'Customer'}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-1 text-xs text-[#667085]">
+                                <span className={token.source === 'walk_in' ? 'status-badge status-warn text-[10px]' : 'status-badge status-open text-[10px]'}>
+                                  {token.source === 'walk_in' ? 'Walk-in' : 'Remote'}
+                                </span>
+                                <span>~{token.estimatedWaitAtJoin ?? 5}m est. wait</span>
+                              </div>
+                            </div>
+                            <span className="status-badge status-warn text-[10px]">Waiting</span>
+                          </div>
+                        </li>
                       ))}
-                    </div>
-                  </li>
-                )}
-              </QueueColumn>
+                      {activeCounters.length > 0 && waitingCount > 0 && (
+                        <li className="mt-2 border-t border-[#E6DED2] p-3 bg-[#FAF7F0]">
+                          <p className="label-caps mb-2 text-[10px]">Call next to counter lane</p>
+                          <div className="flex flex-wrap gap-2">
+                            {activeCounters.map((counter) => (
+                              <button
+                                key={counter._id}
+                                onClick={() => handleCallNext(counter._id)}
+                                className="btn-primary h-8 px-3 text-xs font-bold"
+                              >
+                                Call to {counter.name}
+                              </button>
+                            ))}
+                          </div>
+                        </li>
+                      )}
+                    </QueueColumn>
 
-              <QueueColumn title="Serving" count={servingCount} empty="No customers currently being served.">
-                {queueData.calledTokens?.map((token) => (
-                  <li key={token._id} className="queue-row">
-                    <div>
-                      <p className="metric-number text-lg font-bold text-[#2F7D6D]">{token.tokenNumber}</p>
-                      <p className="text-xs text-[#667085]">At {token.counterId?.name || 'Counter'}</p>
+                    {/* SERVING / CALLED QUEUE COLUMN */}
+                    <QueueColumn title="Serving / Called" count={servingCount} empty="No customers currently being served.">
+                      {queueData.calledTokens?.map((token) => (
+                        <li key={token._id} className="p-3 hover:bg-[#FAF7F0] transition">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="metric-number text-base font-bold text-[#2F7D6D]">
+                                  {token.tokenLabel || token.tokenNumber}
+                                </span>
+                                <span className="text-sm font-bold text-[#1F2933]">
+                                  {token.customerName || 'Customer'}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-xs text-[#667085]">
+                                Serving at: <strong className="text-[#1F2933]">{token.counterName || token.counterId?.name || 'Counter'}</strong>
+                              </p>
+                            </div>
+                            <div className="flex flex-col gap-1 items-end">
+                              <button
+                                onClick={() => handleComplete(token._id)}
+                                className="btn-secondary h-7 px-2 text-xs font-bold flex items-center gap-1 border-[#2F7D6D] text-[#2F7D6D] hover:bg-[#EBF2EE]"
+                              >
+                                <CheckCircle className="h-3 w-3" />
+                                Complete
+                              </button>
+                              <button
+                                onClick={() => handleSkip(token._id)}
+                                className="text-[11px] text-[#B44A3F] hover:underline flex items-center gap-0.5"
+                              >
+                                <SkipForward className="h-3 w-3" />
+                                Skip
+                              </button>
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </QueueColumn>
+                  </div>
+
+                  {/* RECENTLY COMPLETED LIST */}
+                  {completedCount > 0 && (
+                    <div className="rounded-lg border border-[#E6DED2] bg-white p-3">
+                      <div className="flex items-center justify-between mb-2 pb-1 border-b border-[#E6DED2]">
+                        <h4 className="text-xs font-bold text-[#1F2933] flex items-center gap-1.5">
+                          <CheckCircle className="h-3.5 w-3.5 text-[#2F7D6D]" />
+                          Recently Completed Customers ({completedCount})
+                        </h4>
+                        <span className="text-[11px] text-[#667085]">Recorded in Customer History</span>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {queueData.recentCompletedTokens?.slice(-6).reverse().map((t) => (
+                          <div key={t._id} className="rounded border border-[#E6DED2] bg-[#FAF7F0] p-2 text-xs flex items-center justify-between">
+                            <div>
+                              <span className="metric-number font-bold text-[#2F7D6D] mr-1.5">{t.tokenLabel || t.tokenNumber}</span>
+                              <span className="font-bold text-[#1F2933]">{t.customerName || 'Guest'}</span>
+                            </div>
+                            <span className="text-[10px] text-[#667085]">{t.counterName || 'Counter'}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <button onClick={() => handleComplete(token._id)} className="btn-secondary h-9 px-3 text-xs">
-                      <CheckCircle className="h-3.5 w-3.5 text-[#2F7D6D]" />
-                      Complete
-                    </button>
-                  </li>
-                ))}
-              </QueueColumn>
+                  )}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </section>
+          </section>
 
-      {/* Module 1, 2, & 3 Status Banner */}
-      <section className="panel p-5 bg-[#FAF7F0] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-sm font-bold text-[#2F7D6D]">
-            <CheckCircle className="h-4 w-4" />
-            <span>Modules 1, 2, & 3 Implemented</span>
+          {/* Module Complete Status Banner */}
+          <section className="panel p-5 bg-[#FAF7F0] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-bold text-[#2F7D6D]">
+                <CheckCircle className="h-4 w-4" />
+                <span>Customer Names Synchronized & Real-Time QueueDesk Operations Active</span>
+              </div>
+              <p className="mt-1 text-xs text-[#667085] leading-relaxed max-w-2xl">
+                Every token is synchronized with its customer name across owner, staff, and customer views. Completed customers automatically record to their visit history while queues update dynamically.
+              </p>
+            </div>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className="btn-secondary h-9 text-xs self-start sm:self-auto font-bold flex items-center gap-1.5"
+            >
+              <BarChart3 className="h-3.5 w-3.5 text-[#2F7D6D]" />
+              <span>Open Analytics</span>
+            </button>
+          </section>
+        </>
+      )}
+
+      {/* WALK-IN MODAL */}
+      {showWalkInModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="panel-focus w-full max-w-md p-6 bg-white animate-fade-in shadow-xl">
+            <div className="flex items-center justify-between border-b border-[#E6DED2] pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-[#2F7D6D]" />
+                <h3 className="text-lg font-bold text-[#1F2933]">Issue Walk-in Token</h3>
+              </div>
+              <button
+                onClick={() => setShowWalkInModal(false)}
+                className="text-[#667085] hover:text-[#1F2933]"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {walkInError && (
+              <div className="mb-4 rounded-md border border-[#E8B8B2] bg-[#FFF0EE] p-3 text-xs text-[#B44A3F]">
+                {walkInError}
+              </div>
+            )}
+
+            <form onSubmit={handleAddWalkIn} className="space-y-4">
+              <div>
+                <label className="label-caps mb-1.5 block text-xs">Customer Name</label>
+                <input
+                  type="text"
+                  required
+                  value={walkInName}
+                  onChange={(e) => setWalkInName(e.target.value)}
+                  placeholder="e.g. David Kim, Sarah Jenkins"
+                  className="input-field"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="label-caps mb-1.5 block text-xs">Preferred Counter Lane (Optional)</label>
+                <select
+                  value={walkInCounter}
+                  onChange={(e) => setWalkInCounter(e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">Any Active Counter</option>
+                  {business.counters?.filter((c) => c.isActive).map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowWalkInModal(false)}
+                  className="btn-secondary h-9 px-4 text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={walkInLoading || !walkInName.trim()}
+                  className="btn-primary h-9 px-4 text-xs font-bold"
+                >
+                  {walkInLoading ? 'Issuing...' : 'Issue Token'}
+                </button>
+              </div>
+            </form>
           </div>
-          <p className="mt-1 text-xs text-[#667085] leading-relaxed max-w-2xl">
-            Authentication, venue operations, real-time queue orchestration, and Smart Wait-Time Prediction engine (combining live queue throughput & historical hourly patterns) are fully synchronized.
-          </p>
         </div>
-        <Link to="/dashboard/settings" className="btn-secondary h-9 text-xs self-start sm:self-auto">
-          Review Settings
-        </Link>
-      </section>
+      )}
     </div>
   );
 };
@@ -237,11 +506,19 @@ const Stat = ({ label, value, hint, icon: Icon }) => (
 );
 
 const QueueColumn = ({ title, count, empty, children }) => (
-  <div className="rounded-lg border border-[#E6DED2] bg-[#F0EAE1] p-3">
-    <div className="mb-2 flex items-center justify-between">
-      <h3 className="text-sm font-bold text-[#1F2933]">{title}</h3>
-      <span className="metric-number text-sm font-bold text-[#667085]">{count}</span>
+  <div className="rounded-lg border border-[#E6DED2] bg-[#F0EAE1] p-3 flex flex-col justify-between">
+    <div>
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-sm font-bold text-[#1F2933]">{title}</h3>
+        <span className="metric-number text-sm font-bold text-[#667085]">{count}</span>
+      </div>
+      {count > 0 ? (
+        <ul className="divide-y divide-[#E6DED2] rounded-md border border-[#E6DED2] bg-white">
+          {children}
+        </ul>
+      ) : (
+        <p className="rounded-md border border-[#E6DED2] bg-white p-3 text-xs text-[#667085]">{empty}</p>
+      )}
     </div>
-    {count > 0 ? <ul className="divide-y divide-[#E6DED2] rounded-md border border-[#E6DED2] bg-white">{children}</ul> : <p className="rounded-md border border-[#E6DED2] bg-white p-3 text-xs text-[#667085]">{empty}</p>}
   </div>
 );

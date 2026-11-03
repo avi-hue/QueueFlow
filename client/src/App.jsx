@@ -1,6 +1,7 @@
-﻿import React from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { Navbar } from './components/Navbar';
 import { RequireRole } from './routes/RequireRole';
 
@@ -9,6 +10,7 @@ import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { BusinessDashboard } from './pages/business/BusinessDashboard';
+import { BusinessAnalytics } from './pages/business/BusinessAnalytics';
 import { CountersPage } from './pages/business/CountersPage';
 import { BusinessSettingsPage } from './pages/business/BusinessSettingsPage';
 import { DiscoverPage } from './pages/customer/DiscoverPage';
@@ -18,7 +20,8 @@ export function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="app-shell flex flex-col">
+        <NotificationProvider>
+          <div className="app-shell flex flex-col">
           <Navbar />
           <main className="flex-1">
             <Routes>
@@ -44,6 +47,16 @@ export function App() {
                 element={
                   <RequireRole role={['owner', 'staff']}>
                     <BusinessDashboard />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/dashboard/analytics"
+                element={
+                  <RequireRole role={['owner', 'staff']}>
+                    <div className="page-wrap py-6">
+                      <BusinessAnalytics />
+                    </div>
                   </RequireRole>
                 }
               />
@@ -80,6 +93,7 @@ export function App() {
             </div>
           </footer>
         </div>
+        </NotificationProvider>
       </AuthProvider>
     </Router>
   );
