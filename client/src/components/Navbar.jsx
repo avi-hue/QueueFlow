@@ -25,17 +25,10 @@ export const Navbar = () => {
   return (
     <header className="sticky top-0 z-50 border-b border-[#E6DED2] bg-[#FFFDF9]/95">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <Link to="/" className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#D5CCC0] bg-[#1F2933] text-white">
-            <Layers className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-bold tracking-normal text-[#1F2933]">QueueFlow</span>
-              <span className="status-badge status-open">LIVE</span>
-            </div>
-            <p className="hidden text-[11px] font-medium text-[#667085] sm:block">Digital queue operations</p>
-          </div>
+        <Link to="/" className="flex items-center transition hover:opacity-90">
+          <span className="text-2xl font-bold tracking-tight text-[#1F2933]">
+            Queue<span className="text-[#2F7D6D]">Flow</span>
+          </span>
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">

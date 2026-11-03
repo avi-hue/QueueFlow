@@ -81,7 +81,7 @@ Run the full integration test suite:
 ```bash
 npm test
 ```
-**Results:** 28 passing tests across `auth.test.js`, `business.test.js`, `queue.test.js`, and `prediction.test.js`.
+**Results:** 35 passing tests across `auth.test.js`, `business.test.js`, `queue.test.js`, `prediction.test.js`, and `features.test.js`.
 
 ---
 
@@ -125,10 +125,21 @@ Base Path: `/api/v1`
 ### Smart Wait-Time Prediction (Module 3)
 - `GET /queue/prediction/:businessId` — Public & client detailed prediction breakdown (hybrid live rolling durations, historical hourly rush patterns, multi-counter concurrency, confidence score)
 
-### Public Discovery
-- `GET /businesses` — Public venue directory with haversine distance and live queue wait-times
+### Public Discovery & Nearby Comparison
+- `GET /businesses` — Public venue directory with haversine distance, category filtering, search, sorting (wait time, queue size, distance), and live queue wait-times
+- `GET /businesses/compare` — Side-by-side multi-location queue comparison matrix (queue size, wait time, availability, distance, recommendation flags)
 - `GET /businesses/:id` — Public business information
 
+### Real-Time Notifications
+- `GET /notifications` — Get user notifications & unread counter
+- `PATCH /notifications/:id/read` — Mark notification as read
+- `POST /notifications/read-all` — Mark all notifications as read
+- `DELETE /notifications/:id` — Remove notification
+- *Socket.IO events:* `notification:new`, `token:approaching` for instant in-app toast alerts, approaching alerts, and called notifications.
+
+### Business Analytics Dashboard
+- `GET /business/analytics` — Comprehensive performance dashboard (KPI summary, peak hours traffic breakdown, customer flow funnel, waiting times distribution, counter efficiency)
+- `PATCH /business/analytics/status` — Instant queue status toggling from analytics desk
 
 ---
 
@@ -138,7 +149,7 @@ Base Path: `/api/v1`
 - [x] **Phase 1 — Auth & Business Basics (Module 1):** Complete auth, role guards, business profile, counters, staff management, and responsive React frontend.
 - [x] **Phase 2 — Core Queue MVP (Smart Queue Management):** Token generation, dynamic position calculation, queue state machine (`waiting → called → serving → completed`), walk-in management.
 - [x] **Phase 3 — Real-Time Updates (Live Queue Tracking):** Socket.IO rooms (`business:{id}`, `token:{id}`, `public`), live customer hero screen & live staff counter panel synchronization.
-- [x] **Phase 4 — Customer Discovery (Nearby Queue Comparison):** Geo search, haversine distance calculation (mile ranges), and 10 dynamic seeded demo businesses.
+- [x] **Phase 4 — Customer Discovery (Nearby Queue Comparison):** Geo search, category filters, haversine distance calculation, and interactive side-by-side comparison matrix based on queue size, estimated wait time, and availability.
 - [x] **Phase 5 — Wait-Time Prediction (Smart Wait-Time):** Dynamic ETA algorithm blending using real-time completed token service durations.
-- [ ] **Phase 6 — Notifications:** Approaching alerts & no-show handling.
-- [ ] **Phase 7 — Analytics:** Utilization charts, peak hours, metrics summary.
+- [x] **Phase 6 — Notifications:** Real-time in-app toast notifications, Web Audio chimes, turn approaching alerts, called alerts, and notification bell popover.
+- [x] **Phase 7 — Analytics:** Business Analytics Dashboard with peak hours analysis, customer flow funnel, wait times distribution, and service performance per counter.
