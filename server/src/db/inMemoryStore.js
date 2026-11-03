@@ -11,6 +11,7 @@ class InMemoryStore {
     this.tokens = [];
     this.logs = [];
     this.hourlyStats = [];
+    this.notifications = [];
     this.seed();
   }
 
@@ -21,6 +22,7 @@ class InMemoryStore {
     this.tokens = [];
     this.logs = [];
     this.hourlyStats = [];
+    this.notifications = [];
   }
 
   seed() {
@@ -66,8 +68,80 @@ class InMemoryStore {
       notificationPrefs: { approachingThreshold: 2, positionAlerts: true },
       createdAt: new Date().toISOString()
     };
+
+    const customer3 = {
+      _id: generateId(),
+      name: 'Liam Smith',
+      email: 'liam@queueflow.dev',
+      passwordHash: defaultPasswordHash,
+      phone: '+1 (555) 999-5566',
+      role: 'customer',
+      businessId: null,
+      notificationPrefs: { approachingThreshold: 3, positionAlerts: true },
+      createdAt: new Date().toISOString()
+    };
+
+    const customer4 = {
+      _id: generateId(),
+      name: 'Sophia Chen',
+      email: 'sophia@queueflow.dev',
+      passwordHash: defaultPasswordHash,
+      phone: '+1 (555) 999-7788',
+      role: 'customer',
+      businessId: null,
+      notificationPrefs: { approachingThreshold: 3, positionAlerts: true },
+      createdAt: new Date().toISOString()
+    };
+
+    const customer5 = {
+      _id: generateId(),
+      name: 'Noah Patel',
+      email: 'noah@queueflow.dev',
+      passwordHash: defaultPasswordHash,
+      phone: '+1 (555) 999-9900',
+      role: 'customer',
+      businessId: null,
+      notificationPrefs: { approachingThreshold: 3, positionAlerts: true },
+      createdAt: new Date().toISOString()
+    };
+
+    const customer6 = {
+      _id: generateId(),
+      name: 'Emma Watson',
+      email: 'emma@queueflow.dev',
+      passwordHash: defaultPasswordHash,
+      phone: '+1 (555) 999-2233',
+      role: 'customer',
+      businessId: null,
+      notificationPrefs: { approachingThreshold: 3, positionAlerts: true },
+      createdAt: new Date().toISOString()
+    };
+
+    const customer7 = {
+      _id: generateId(),
+      name: 'Lucas Miller',
+      email: 'lucas@queueflow.dev',
+      passwordHash: defaultPasswordHash,
+      phone: '+1 (555) 999-4455',
+      role: 'customer',
+      businessId: null,
+      notificationPrefs: { approachingThreshold: 3, positionAlerts: true },
+      createdAt: new Date().toISOString()
+    };
+
+    const customer8 = {
+      _id: generateId(),
+      name: 'Olivia Garcia',
+      email: 'olivia@queueflow.dev',
+      passwordHash: defaultPasswordHash,
+      phone: '+1 (555) 999-6677',
+      role: 'customer',
+      businessId: null,
+      notificationPrefs: { approachingThreshold: 3, positionAlerts: true },
+      createdAt: new Date().toISOString()
+    };
     
-    this.users.push(customer, customer2);
+    this.users.push(customer, customer2, customer3, customer4, customer5, customer6, customer7, customer8);
 
     bizTemplates.forEach((t, index) => {
       const ownerId = generateId();
@@ -171,6 +245,7 @@ class InMemoryStore {
 
       const queueId = generateId();
       const tokenCount = 5 + (index % 11);
+      const bizPrefix = t.name.charAt(0).toUpperCase();
       
       const queue = {
         _id: queueId,
@@ -183,6 +258,12 @@ class InMemoryStore {
       };
       this.queues.push(queue);
 
+      const guestNamesPool = [
+        'Marcus Vance', 'Elena Rostova', 'Devon Cole', 'Hannah Abbott',
+        'Carlos Mendez', 'Aisha Khan', 'Tariq Bradley', 'Jessica Taylor',
+        'David Kim', 'Chloe Bennett', 'Brian Clark', 'Maya Lin', 'Kevin Patel'
+      ];
+
       if (index === 0) {
         // Pre-seed 2 completed tokens earlier today for Apex Health Clinic so live rolling metrics exist immediately
         const c1Started = new Date(Date.now() - 32 * 60000).toISOString();
@@ -192,9 +273,9 @@ class InMemoryStore {
           queueId: queueId,
           businessId: bizId,
           userId: null,
-          walkInName: 'Morning Guest 1',
+          walkInName: 'Marcus Vance',
           tokenNumber: 901,
-          tokenLabel: 'A-901',
+          tokenLabel: `${bizPrefix}-901`,
           status: 'completed',
           counterId: counters[0]._id,
           joinedAt: new Date(Date.now() - 45 * 60000).toISOString(),
@@ -214,9 +295,9 @@ class InMemoryStore {
           queueId: queueId,
           businessId: bizId,
           userId: null,
-          walkInName: 'Morning Guest 2',
+          walkInName: 'Hannah Abbott',
           tokenNumber: 902,
-          tokenLabel: 'A-902',
+          tokenLabel: `${bizPrefix}-902`,
           status: 'completed',
           counterId: counters[1]._id,
           joinedAt: new Date(Date.now() - 30 * 60000).toISOString(),
@@ -228,13 +309,128 @@ class InMemoryStore {
           notifiedFlags: { approachingSent: true, calledSent: true, skippedSent: false },
           createdAt: c2Started
         });
+      } else if (index === 1) {
+        // Pre-seed completed visit for customer Alex Turner at Urban Grind Artisanal Coffee
+        const ugStart = new Date(Date.now() - 110 * 60000).toISOString();
+        const ugEnd = new Date(Date.now() - 104 * 60000).toISOString();
+        this.tokens.push({
+          _id: generateId(),
+          queueId: queueId,
+          businessId: bizId,
+          userId: customer._id,
+          walkInName: null,
+          tokenNumber: 4,
+          tokenLabel: `${bizPrefix}-004`,
+          status: 'completed',
+          counterId: counters[0]._id,
+          joinedAt: new Date(Date.now() - 125 * 60000).toISOString(),
+          calledAt: ugStart,
+          serviceStartedAt: ugStart,
+          completedAt: ugEnd,
+          estimatedWaitAtJoin: 10,
+          source: 'remote',
+          notifiedFlags: { approachingSent: true, calledSent: true, skippedSent: false },
+          createdAt: new Date(Date.now() - 125 * 60000).toISOString()
+        });
+
+        // Also pre-seed a completed visit for Jane Doe
+        const jdStart = new Date(Date.now() - 85 * 60000).toISOString();
+        const jdEnd = new Date(Date.now() - 80 * 60000).toISOString();
+        this.tokens.push({
+          _id: generateId(),
+          queueId: queueId,
+          businessId: bizId,
+          userId: customer2._id,
+          walkInName: null,
+          tokenNumber: 7,
+          tokenLabel: `${bizPrefix}-007`,
+          status: 'completed',
+          counterId: counters[1]._id,
+          joinedAt: new Date(Date.now() - 95 * 60000).toISOString(),
+          calledAt: jdStart,
+          serviceStartedAt: jdStart,
+          completedAt: jdEnd,
+          estimatedWaitAtJoin: 6,
+          source: 'remote',
+          notifiedFlags: { approachingSent: true, calledSent: true, skippedSent: false },
+          createdAt: new Date(Date.now() - 95 * 60000).toISOString()
+        });
+      } else if (index === 2) {
+        // Pre-seed completed visit for customer Alex Turner at First National Bank
+        const bStart = new Date(Date.now() - 210 * 60000).toISOString();
+        const bEnd = new Date(Date.now() - 202 * 60000).toISOString();
+        this.tokens.push({
+          _id: generateId(),
+          queueId: queueId,
+          businessId: bizId,
+          userId: customer._id,
+          walkInName: null,
+          tokenNumber: 2,
+          tokenLabel: `${bizPrefix}-002`,
+          status: 'completed',
+          counterId: counters[1]._id,
+          joinedAt: new Date(Date.now() - 230 * 60000).toISOString(),
+          calledAt: bStart,
+          serviceStartedAt: bStart,
+          completedAt: bEnd,
+          estimatedWaitAtJoin: 14,
+          source: 'remote',
+          notifiedFlags: { approachingSent: true, calledSent: true, skippedSent: false },
+          createdAt: new Date(Date.now() - 230 * 60000).toISOString()
+        });
+      } else if (index === 4) {
+        // Pre-seed completed visit for customer Alex Turner at Sweet Tooth Bakery
+        const sStart = new Date(Date.now() - 320 * 60000).toISOString();
+        const sEnd = new Date(Date.now() - 315 * 60000).toISOString();
+        this.tokens.push({
+          _id: generateId(),
+          queueId: queueId,
+          businessId: bizId,
+          userId: customer._id,
+          walkInName: null,
+          tokenNumber: 8,
+          tokenLabel: `${bizPrefix}-008`,
+          status: 'completed',
+          counterId: counters[0]._id,
+          joinedAt: new Date(Date.now() - 335 * 60000).toISOString(),
+          calledAt: sStart,
+          serviceStartedAt: sStart,
+          completedAt: sEnd,
+          estimatedWaitAtJoin: 8,
+          source: 'remote',
+          notifiedFlags: { approachingSent: true, calledSent: true, skippedSent: false },
+          createdAt: new Date(Date.now() - 335 * 60000).toISOString()
+        });
       }
 
       for(let i = 1; i <= tokenCount; i++) {
         const tokenId = generateId();
         const joinedAt = new Date(Date.now() - (tokenCount - i + 1) * 60000 * biz.settings.avgServiceTimeDefault).toISOString();
         const estimatedWait = (i - 1) * biz.settings.avgServiceTimeDefault;
-        const assignedUserId = (index === 0 && i === 1) ? customer._id : (index === 0 && i === 2 ? customer2._id : null);
+        
+        let assignedUserId = null;
+        let walkInName = null;
+
+        if (index === 0) {
+          // Apex Health Clinic simulated users
+          if (i === 1) assignedUserId = customer._id; // Alex Turner
+          else if (i === 2) assignedUserId = customer2._id; // Jane Doe
+          else if (i === 3) assignedUserId = customer3._id; // Liam Smith
+          else if (i === 4) assignedUserId = customer4._id; // Sophia Chen
+          else if (i === 5) walkInName = 'Elena Rostova';
+          else if (i === 6) assignedUserId = customer5._id; // Noah Patel
+          else if (i === 7) walkInName = 'Devon Cole';
+          else walkInName = guestNamesPool[(i + index) % guestNamesPool.length];
+        } else if (index === 1) {
+          // Urban Grind Coffee simulated users
+          if (i === 1) assignedUserId = customer6._id; // Emma Watson
+          else if (i === 2) assignedUserId = customer7._id; // Lucas Miller
+          else if (i === 3) assignedUserId = customer8._id; // Olivia Garcia
+          else walkInName = guestNamesPool[(i + index) % guestNamesPool.length];
+        } else {
+          walkInName = guestNamesPool[(i + index * 3) % guestNamesPool.length];
+        }
+
         const isCalledFirst = (index === 0 && i === 1);
 
         if (isCalledFirst) {
@@ -246,9 +442,9 @@ class InMemoryStore {
           queueId: queueId,
           businessId: bizId,
           userId: assignedUserId,
-          walkInName: isCalledFirst ? null : `Walk-in Guest ${i}`,
+          walkInName: assignedUserId ? null : walkInName,
           tokenNumber: i,
-          tokenLabel: `A-${String(i).padStart(3, '0')}`,
+          tokenLabel: `${bizPrefix}-${String(i).padStart(3, '0')}`,
           status: isCalledFirst ? 'called' : 'waiting',
           counterId: isCalledFirst ? counters[0]._id : null,
           joinedAt: joinedAt,
@@ -256,7 +452,7 @@ class InMemoryStore {
           serviceStartedAt: null,
           completedAt: null,
           estimatedWaitAtJoin: estimatedWait,
-          source: (i <= 2) ? 'remote' : 'walk_in',
+          source: assignedUserId ? 'remote' : 'walk_in',
           notifiedFlags: { approachingSent: isCalledFirst, calledSent: isCalledFirst, skippedSent: false },
           createdAt: joinedAt
         };
@@ -312,6 +508,53 @@ class InMemoryStore {
         }
       }
     });
+
+    // Seed initial notifications for customer Alex Turner (Apex Health Clinic)
+    const apexBiz = this.businesses[0];
+    const customerToken = this.tokens.find((t) => t.userId === customer._id);
+    if (customer && apexBiz) {
+      this.notifications.push(
+        {
+          _id: generateId(),
+          userId: customer._id,
+          businessId: apexBiz._id,
+          tokenId: customerToken ? customerToken._id : null,
+          type: 'general',
+          title: 'Welcome to QueueFlow',
+          message: 'Explore nearby venues and join virtual queues with real-time ETA predictions.',
+          data: { businessName: apexBiz.name },
+          read: true,
+          readAt: new Date(Date.now() - 30 * 60000).toISOString(),
+          createdAt: new Date(Date.now() - 30 * 60000).toISOString()
+        },
+        {
+          _id: generateId(),
+          userId: customer._id,
+          businessId: apexBiz._id,
+          tokenId: customerToken ? customerToken._id : null,
+          type: 'approaching',
+          title: 'Turn Approaching',
+          message: `Your turn is approaching at ${apexBiz.name}! You are #1 in line.`,
+          data: { businessName: apexBiz.name, position: 1 },
+          read: false,
+          readAt: null,
+          createdAt: new Date(Date.now() - 5 * 60000).toISOString()
+        },
+        {
+          _id: generateId(),
+          userId: customer._id,
+          businessId: apexBiz._id,
+          tokenId: customerToken ? customerToken._id : null,
+          type: 'called',
+          title: "You've been called!",
+          message: `Please proceed to Triage Counter A at ${apexBiz.name} now.`,
+          data: { businessName: apexBiz.name, counterName: 'Triage Counter A' },
+          read: false,
+          readAt: null,
+          createdAt: new Date(Date.now() - 2 * 60000).toISOString()
+        }
+      );
+    }
   }
 }
 
@@ -792,9 +1035,24 @@ class TokenModel {
       return results.sort((a, b) => a.tokenNumber - b.tokenNumber).map((t) => new TokenModel(t));
     })();
 
-    promise.sort = function () {
+    promise.sort = function (criteria) {
       return promise;
     };
+
+    promise.populate = function (field) {
+      return (async () => {
+        const tokens = await promise;
+        for (const token of tokens) {
+          if (field === 'businessId' && token.businessId) {
+            token.businessId = await BusinessModel.findById(token.businessId);
+          } else if (field === 'userId' && token.userId) {
+            token.userId = await UserModel.findById(token.userId);
+          }
+        }
+        return tokens;
+      })();
+    };
+
     return promise;
   }
 
@@ -883,6 +1141,128 @@ class HourlyStatModel {
   }
 }
 
+class NotificationModel {
+  constructor(data) {
+    this._id = data._id ? data._id.toString() : generateId();
+    this.userId = data.userId ? data.userId.toString() : null;
+    this.businessId = data.businessId ? data.businessId.toString() : null;
+    this.tokenId = data.tokenId ? data.tokenId.toString() : null;
+    this.type = data.type || 'general'; // 'approaching', 'called', 'queue_status', 'skipped', 'completed', 'cancelled', 'general'
+    this.title = data.title || 'Notification';
+    this.message = data.message || data.body || '';
+    this.data = data.data || {};
+    this.read = data.read !== undefined ? Boolean(data.read) : (data.readAt ? true : false);
+    this.readAt = data.readAt || (this.read ? new Date().toISOString() : null);
+    this.createdAt = data.createdAt || new Date().toISOString();
+  }
+
+  toObject() {
+    return { ...this };
+  }
+
+  toJSON() {
+    return { ...this };
+  }
+
+  async save() {
+    const plainObj = { ...this };
+    const idx = store.notifications.findIndex((n) => n._id === this._id);
+    if (idx >= 0) {
+      store.notifications[idx] = plainObj;
+    } else {
+      store.notifications.push(plainObj);
+    }
+    return this;
+  }
+
+  static find(query = {}) {
+    const promise = (async () => {
+      const results = store.notifications.filter((n) => {
+        if (query.userId && String(n.userId) !== String(query.userId)) return false;
+        if (query.businessId && String(n.businessId) !== String(query.businessId)) return false;
+        if (query.type && n.type !== query.type) return false;
+        if (query.read !== undefined && n.read !== query.read) return false;
+        if (query._id && n._id !== query._id.toString()) return false;
+        return true;
+      });
+      return results
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .map((n) => new NotificationModel(n));
+    })();
+
+    promise.sort = function () {
+      return promise;
+    };
+    return promise;
+  }
+
+  static findById(id) {
+    const promise = (async () => {
+      const found = store.notifications.find((n) => n._id === id?.toString());
+      return found ? new NotificationModel(found) : null;
+    })();
+    return promise;
+  }
+
+  static findOne(query) {
+    const promise = (async () => {
+      const list = await NotificationModel.find(query);
+      return list[0] || null;
+    })();
+    return promise;
+  }
+
+  static async findByIdAndUpdate(id, update, options = {}) {
+    const notif = await NotificationModel.findById(id);
+    if (!notif) return null;
+    if (update.$set) {
+      Object.assign(notif, update.$set);
+    } else {
+      Object.assign(notif, update);
+    }
+    if (notif.read && !notif.readAt) {
+      notif.readAt = new Date().toISOString();
+    }
+    await notif.save();
+    return notif;
+  }
+
+  static async updateMany(filter, update) {
+    const list = await NotificationModel.find(filter);
+    for (const item of list) {
+      if (update.$set) {
+        Object.assign(item, update.$set);
+      } else {
+        Object.assign(item, update);
+      }
+      if (item.read && !item.readAt) {
+        item.readAt = new Date().toISOString();
+      }
+      await item.save();
+    }
+    return { modifiedCount: list.length };
+  }
+
+  static async findByIdAndDelete(id) {
+    const idx = store.notifications.findIndex((n) => n._id === id?.toString());
+    if (idx >= 0) {
+      const deleted = store.notifications.splice(idx, 1)[0];
+      return new NotificationModel(deleted);
+    }
+    return null;
+  }
+
+  static async countDocuments(query = {}) {
+    const list = await NotificationModel.find(query);
+    return list.length;
+  }
+
+  static async deleteMany() {
+    store.notifications = [];
+    return { deletedCount: 0 };
+  }
+}
+
 module.exports = {
   store,
   User: UserModel,
@@ -890,6 +1270,7 @@ module.exports = {
   Queue: QueueModel,
   Token: TokenModel,
   HourlyStat: HourlyStatModel,
+  Notification: NotificationModel,
   generateId
 };
 

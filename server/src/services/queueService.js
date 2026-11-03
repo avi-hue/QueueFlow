@@ -1,27 +1,88 @@
 const Queue = require('../models/Queue');
 const Token = require('../models/Token');
 const Business = require('../models/Business');
+const User = require('../models/User');
 const HourlyStat = require('../models/HourlyStat');
 const { getIO } = require('../sockets');
+const notificationService = require('./notificationService');
 
-function emitUpdates(businessId, token) {
+async function emitUpdates(businessId, token) {
   try {
     const io = getIO();
     if (io) {
       if (businessId) {
         io.to(`business:${businessId}`).emit('queue:updated');
+        io.emit('queue:updated'); // Global queue sync
         io.emit('public:queue:updated'); // Global emit for Discover page sync
       }
       if (token) {
         io.to(`token:${token._id}`).emit('token:updated');
         if (token.userId) {
           io.to(`user:${token.userId}`).emit('token:updated');
+          io.to(`user:${token.userId}`).emit('queue:updated');
+        }
+      }
+
+      // Proactively notify all active customers in this queue so line position & token queue update live
+      if (businessId) {
+        try {
+          const activeTokens = await Token.find({
+            businessId,
+            status: { $in: ['waiting', 'called', 'serving'] }
+          });
+          for (const t of activeTokens) {
+            if (t.userId) {
+              io.to(`user:${t.userId}`).emit('token:updated');
+              io.to(`user:${t.userId}`).emit('queue:updated');
+            }
+            io.to(`token:${t._id}`).emit('token:updated');
+          }
+        } catch (innerErr) {
+          // ignore
         }
       }
     }
   } catch (error) {
     console.error('Socket emission error:', error);
   }
+}
+
+async function enrichToken(token, business = null) {
+  if (!token) return null;
+  const raw = typeof token.toObject === 'function' ? token.toObject() : { ...token };
+
+  let customerName = raw.walkInName;
+  let customerPhone = '';
+  let customerEmail = '';
+
+  if (raw.userId) {
+    try {
+      const user = await User.findById(raw.userId);
+      if (user) {
+        customerName = user.name;
+        customerPhone = user.phone || '';
+        customerEmail = user.email || '';
+      }
+    } catch (err) {
+      // ignore
+    }
+  }
+
+  raw.customerName = customerName || 'Guest Customer';
+  raw.customerPhone = customerPhone;
+  raw.customerEmail = customerEmail;
+
+  if (raw.counterId) {
+    if (!business && raw.businessId) {
+      business = await Business.findById(raw.businessId);
+    }
+    const counterObj = business?.counters?.find((c) => String(c._id) === String(raw.counterId));
+    raw.counterName = counterObj ? counterObj.name : 'Counter';
+  } else {
+    raw.counterName = null;
+  }
+
+  return raw;
 }
 
 /**
@@ -257,6 +318,11 @@ async function joinQueue(businessId, userId) {
   });
 
   await newToken.save();
+  try {
+    await notificationService.checkAndTriggerApproachingAlerts(businessId, queue._id);
+  } catch (notifErr) {
+    console.error('Notification error on joinQueue:', notifErr);
+  }
   emitUpdates(businessId, newToken);
   return newToken;
 }
@@ -302,6 +368,11 @@ async function addWalkIn(businessId, walkInName, counterId = null) {
   });
 
   await newToken.save();
+  try {
+    await notificationService.checkAndTriggerApproachingAlerts(businessId, queue._id);
+  } catch (notifErr) {
+    console.error('Notification error on joinQueue:', notifErr);
+  }
   emitUpdates(businessId, newToken);
   return newToken;
 }
@@ -338,6 +409,16 @@ async function callNext(businessId, counterId, staffId = null) {
     queue.nowServing.push({ counterId, tokenId: nextToken._id });
   }
   await queue.save();
+
+  try {
+    const business = await Business.findById(businessId);
+    const counterObj = business?.counters?.find((c) => String(c._id) === String(counterId));
+    const counterName = counterObj ? counterObj.name : 'Counter';
+    await notificationService.notifyCustomerCalled(nextToken, business, counterName);
+    await notificationService.checkAndTriggerApproachingAlerts(businessId, queue._id);
+  } catch (notifErr) {
+    console.error('Notification error on callNext:', notifErr);
+  }
 
   emitUpdates(businessId, nextToken);
   return nextToken;
@@ -431,6 +512,16 @@ async function completeToken(tokenId) {
     await queue.save();
   }
 
+  try {
+    const business = await Business.findById(token.businessId);
+    if (business) {
+      await notificationService.notifyCustomerCompleted(token, business);
+    }
+    await notificationService.checkAndTriggerApproachingAlerts(token.businessId, token.queueId);
+  } catch (notifErr) {
+    console.error('Notification error on completeToken:', notifErr);
+  }
+
   emitUpdates(token.businessId, token);
   return token;
 }
@@ -451,6 +542,16 @@ async function skipToken(tokenId) {
   if (queue) {
     queue.nowServing = queue.nowServing.filter((ns) => String(ns.tokenId) !== String(token._id));
     await queue.save();
+  }
+
+  try {
+    const business = await Business.findById(token.businessId);
+    if (business) {
+      await notificationService.notifyCustomerSkipped(token, business);
+    }
+    await notificationService.checkAndTriggerApproachingAlerts(token.businessId, token.queueId);
+  } catch (notifErr) {
+    console.error('Notification error on skipToken:', notifErr);
   }
 
   emitUpdates(token.businessId, token);
@@ -483,6 +584,12 @@ async function cancelToken(tokenId, userId = null) {
     await queue.save();
   }
 
+  try {
+    await notificationService.checkAndTriggerApproachingAlerts(token.businessId, token.queueId);
+  } catch (notifErr) {
+    console.error('Notification error on cancelToken:', notifErr);
+  }
+
   emitUpdates(token.businessId, token);
   return token;
 }
@@ -498,6 +605,12 @@ async function updateQueueStatus(businessId, status) {
   const queue = await getOrCreateTodaysQueue(businessId);
   queue.status = status;
   await queue.save();
+
+  try {
+    await notificationService.notifyQueueStatusChange(businessId, status);
+  } catch (notifErr) {
+    console.error('Notification error on updateQueueStatus:', notifErr);
+  }
 
   emitUpdates(businessId, null);
   return queue;
@@ -515,10 +628,13 @@ async function getQueueState(businessId) {
   const queue = await getOrCreateTodaysQueue(businessId);
   const allTokens = await Token.find({ queueId: queue._id });
 
-  const waitingTokens = allTokens.filter((t) => t.status === 'waiting');
-  const calledTokens = allTokens.filter((t) => t.status === 'called');
-  const servingTokens = allTokens.filter((t) => t.status === 'serving');
-  const completedTokens = allTokens.filter((t) => t.status === 'completed');
+  // Enrich every token with customerName and counterName for owner and staff sync
+  const enrichedTokens = await Promise.all(allTokens.map((t) => enrichToken(t, business)));
+
+  const waitingTokens = enrichedTokens.filter((t) => t.status === 'waiting');
+  const calledTokens = enrichedTokens.filter((t) => t.status === 'called');
+  const servingTokens = enrichedTokens.filter((t) => t.status === 'serving');
+  const completedTokens = enrichedTokens.filter((t) => t.status === 'completed');
 
   const prediction = await predictWaitTime(business, queue, waitingTokens.length);
   const estimatedWaitMins = prediction.estimatedWaitMins;
@@ -573,19 +689,97 @@ async function getUserActiveToken(userId) {
   // Find assigned counter details if called or serving
   let counterName = null;
   if (token.counterId && business) {
-    const counterObj = business.counters.find((c) => String(c._id) === String(token.counterId));
+    const counterObj = business.counters?.find((c) => String(c._id) === String(token.counterId));
     if (counterObj) counterName = counterObj.name;
   }
 
+  // Also calculate current serving token number for this queue
+  let currentServingNumber = null;
+  let currentServingLabel = null;
+  if (queue && queue.nowServing && queue.nowServing.length > 0) {
+    const servingEntry = queue.nowServing[0];
+    if (servingEntry && servingEntry.tokenId) {
+      const curToken = await Token.findById(servingEntry.tokenId);
+      if (curToken) {
+        currentServingNumber = curToken.tokenNumber;
+        currentServingLabel = curToken.tokenLabel;
+      }
+    }
+  }
+
+  const enriched = await enrichToken(token, business);
+
   return {
-    ...token.toObject(),
+    ...enriched,
     businessName: business?.name || 'Business',
+    businessCategory: business?.category || 'General',
+    businessAddress: business?.address || '',
+    businessPhone: business?.phone || '',
     queueStatus: queue?.status || 'open',
     position,
     estimatedWaitMins,
     prediction,
-    counterName
+    counterName,
+    currentServingNumber,
+    currentServingLabel
   };
+}
+
+/**
+ * Get completed shop visit history for a customer
+ * (Only tokens that were called and completed)
+ */
+async function getCustomerHistory(userId) {
+  const completedTokens = await Token.find({
+    userId,
+    status: 'completed'
+  });
+
+  const history = [];
+  for (const token of completedTokens) {
+    const business = await Business.findById(token.businessId);
+    let counterName = 'Counter';
+    if (token.counterId && business) {
+      const counterObj = business.counters?.find((c) => String(c._id) === String(token.counterId));
+      if (counterObj) counterName = counterObj.name;
+    }
+
+    let durationMinutes = 0;
+    const start = token.serviceStartedAt || token.calledAt;
+    const end = token.completedAt;
+    if (start && end) {
+      durationMinutes = Math.max(1, Math.round((new Date(end) - new Date(start)) / 60000));
+    }
+
+    let waitMinutes = 0;
+    if (token.joinedAt && (token.calledAt || token.completedAt)) {
+      waitMinutes = Math.max(1, Math.round((new Date(token.calledAt || token.completedAt) - new Date(token.joinedAt)) / 60000));
+    }
+
+    history.push({
+      _id: token._id,
+      tokenId: token._id,
+      tokenNumber: token.tokenNumber,
+      tokenLabel: token.tokenLabel,
+      businessId: business?._id || token.businessId,
+      businessName: business?.name || 'Unknown Venue',
+      category: business?.category || 'Services',
+      address: business?.address || '',
+      phone: business?.phone || '',
+      counterName,
+      source: token.source,
+      joinedAt: token.joinedAt,
+      calledAt: token.calledAt,
+      serviceStartedAt: token.serviceStartedAt,
+      completedAt: token.completedAt,
+      durationMinutes,
+      waitMinutes,
+      status: 'completed'
+    });
+  }
+
+  history.sort((a, b) => new Date(b.completedAt || 0) - new Date(a.completedAt || 0));
+  return history;
 }
 
 module.exports = {
@@ -600,6 +794,8 @@ module.exports = {
   updateQueueStatus,
   getQueueState,
   getUserActiveToken,
+  getCustomerHistory,
+  enrichToken,
   predictWaitTime,
   getBusinessPrediction,
   getDynamicAvgServiceTime

@@ -36,6 +36,21 @@ async function getMyToken(req, res, next) {
 }
 
 /**
+ * Customer: Get completed shop visit history
+ */
+async function getMyHistory(req, res, next) {
+  try {
+    const history = await queueService.getCustomerHistory(req.user._id);
+    res.status(200).json({
+      status: 'success',
+      data: { history }
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
  * Customer: Cancel active token
  */
 async function cancelToken(req, res, next) {
@@ -228,6 +243,7 @@ async function addWalkIn(req, res, next) {
 module.exports = {
   joinQueue,
   getMyToken,
+  getMyHistory,
   cancelToken,
   getPublicQueueStatus,
   getPredictionBreakdown,

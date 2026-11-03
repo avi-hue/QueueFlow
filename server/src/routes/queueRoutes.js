@@ -16,6 +16,7 @@ router.use(authenticate);
 
 router.post('/join', requireRole('customer'), queueController.joinQueue);
 router.get('/my-token', requireRole('customer'), queueController.getMyToken);
+router.get('/my-history', requireRole('customer'), queueController.getMyHistory);
 router.post('/cancel/:tokenId', requireRole('customer'), queueController.cancelToken);
 
 // Business Staff / Owner Queue Control Endpoints (Protected)

@@ -160,15 +160,55 @@ const seedData = async () => {
     });
     await customerUser2.save();
 
+    const customerUser3 = new User({
+      name: 'Liam Smith',
+      email: 'liam@queueflow.dev',
+      passwordHash: 'Password123!',
+      phone: '+1 (555) 999-5566',
+      role: 'customer',
+      notificationPrefs: {
+        approachingThreshold: 3,
+        positionAlerts: true
+      }
+    });
+    await customerUser3.save();
+
+    const customerUser4 = new User({
+      name: 'Sophia Chen',
+      email: 'sophia@queueflow.dev',
+      passwordHash: 'Password123!',
+      phone: '+1 (555) 999-7788',
+      role: 'customer',
+      notificationPrefs: {
+        approachingThreshold: 3,
+        positionAlerts: true
+      }
+    });
+    await customerUser4.save();
+
+    const customerUser5 = new User({
+      name: 'Noah Patel',
+      email: 'noah@queueflow.dev',
+      passwordHash: 'Password123!',
+      phone: '+1 (555) 999-9900',
+      role: 'customer',
+      notificationPrefs: {
+        approachingThreshold: 3,
+        positionAlerts: true
+      }
+    });
+    await customerUser5.save();
+
     console.log('\n=============================================');
     console.log('  QueueFlow Seed Completed Successfully!    ');
     console.log('=============================================');
     console.log('Demo Credentials (Password: Password123!):');
-    console.log('1. Owner (Healthcare) : owner@queueflow.dev');
+    console.log('1. Owner (Healthcare) : owner@queueflow.dev / apex@queueflow.dev');
     console.log('2. Staff (Healthcare) : staff@queueflow.dev');
-    console.log('3. Owner (Cafe)       : cafe@queueflow.dev');
+    console.log('3. Owner (Cafe)       : cafe@queueflow.dev / urban@queueflow.dev');
     console.log('4. Customer (Alex)    : customer@queueflow.dev');
     console.log('5. Customer (Jane)    : jane@queueflow.dev');
+    console.log('6. Customer (Liam)    : liam@queueflow.dev');
     console.log('=============================================\n');
 
     process.exit(0);

@@ -8,6 +8,8 @@ const authRoutes = require('./routes/authRoutes');
 const businessRoutes = require('./routes/businessRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const queueRoutes = require('./routes/queueRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
 
 const app = express();
 
@@ -31,9 +33,11 @@ app.get('/api/v1/health', (req, res) => {
 
 // Mount module routes
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/business/analytics', analyticsRoutes);
 app.use('/api/v1/business', businessRoutes);
 app.use('/api/v1/businesses', customerRoutes);
 app.use('/api/v1/queue', queueRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
 
 
 // 404 handler for undefined routes

@@ -59,6 +59,23 @@ describe('Core Queue MVP API Endpoints', () => {
     expect(res.body.status).toBe('success');
     expect(res.body.data.token).not.toBeNull();
     expect(res.body.data.token.tokenLabel).toBe('A-001');
+    expect(res.body.data.token.customerName).toBe('Alex Turner');
+  });
+
+  it('GET /api/v1/queue/my-history should return customer completed shop visits with shop details', async () => {
+    const res = await request(app)
+      .get('/api/v1/queue/my-history')
+      .set('Authorization', `Bearer ${customerToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('success');
+    expect(Array.isArray(res.body.data.history)).toBe(true);
+    expect(res.body.data.history.length).toBeGreaterThan(0);
+
+    const firstVisit = res.body.data.history[0];
+    expect(firstVisit.businessName).toBeDefined();
+    expect(firstVisit.status).toBe('completed');
+    expect(firstVisit.completedAt).toBeDefined();
   });
 
   it('POST /api/v1/queue/join should prevent customer from joining twice', async () => {
@@ -80,6 +97,8 @@ describe('Core Queue MVP API Endpoints', () => {
     expect(res.body.status).toBe('success');
     expect(res.body.data.queue.stats).toBeDefined();
     expect(res.body.data.queue.waitingTokens.length).toBeGreaterThan(0);
+    expect(res.body.data.queue.waitingTokens[0].customerName).toBeDefined();
+    expect(typeof res.body.data.queue.waitingTokens[0].customerName).toBe('string');
   });
 
   it('POST /api/v1/queue/business/queue/call-next should call earliest waiting customer', async () => {
