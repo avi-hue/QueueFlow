@@ -224,19 +224,27 @@ export const BusinessAnalytics = () => {
       {/* KPI Overview Grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <KpiCard
-          label="Total Customer Flow"
+          label={timeframe === 'today' ? "Today's Customer Flow" : "7-Day Daily Avg Flow"}
           value={kpis.totalArrivals ?? 0}
           unit="customers"
-          sub={`${kpis.totalServed ?? 0} served (${kpis.completionRate ?? 0}% rate)`}
+          sub={
+            timeframe === 'today'
+              ? `${kpis.totalServed ?? 0} served today (${kpis.totalWaiting ?? 0} in queue)`
+              : `${kpis.totalServed ?? 0} daily served avg (${kpis.completionRate ?? 0}% rate)`
+          }
           icon={Users}
           color="#2F7D6D"
         />
 
         <KpiCard
-          label="Average Wait Time"
+          label={timeframe === 'today' ? "Live Average Wait" : "7-Day Average Wait"}
           value={`~${kpis.avgWaitTimeMin ?? 0}`}
           unit="min"
-          sub={`Peak wait recorded: ${kpis.maxWaitTimeMin ?? 0}m`}
+          sub={
+            timeframe === 'today'
+              ? `Live wait pace (max: ${kpis.maxWaitTimeMin ?? 0}m)`
+              : `7-day rolling average (peak: ${kpis.maxWaitTimeMin ?? 0}m)`
+          }
           icon={Clock}
           color="#C98A2E"
         />
@@ -245,16 +253,20 @@ export const BusinessAnalytics = () => {
           label="Service Duration"
           value={`~${kpis.avgServiceDurationMin ?? 5}`}
           unit="m / token"
-          sub="Blended counter pace"
+          sub={timeframe === 'today' ? "Today's rolling counter pace" : "7-day blended counter pace"}
           icon={Activity}
           color="#2F7D6D"
         />
 
         <KpiCard
-          label="Peak Rush Hour"
+          label={timeframe === 'today' ? "Today's Peak Hour" : "7-Day Rush Window"}
           value={peakHours.busiestHour?.label || '12:00 PM'}
           unit=""
-          sub={`Peak: ${peakHours.busiestHour?.arrivals || 0} visits/hr`}
+          sub={
+            timeframe === 'today'
+              ? `Today's busiest: ${peakHours.busiestHour?.arrivals || 0} visits/hr`
+              : `7-day peak: ~${peakHours.busiestHour?.arrivals || 0} visits/hr`
+          }
           icon={TrendingUp}
           color="#C98A2E"
         />
@@ -273,10 +285,15 @@ export const BusinessAnalytics = () => {
       <div className="panel p-6">
         <div className="section-rule mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
           <div>
-            <p className="label-caps">Hourly Traffic Intelligence</p>
+            <div className="flex items-center gap-2 mb-1">
+              <span className={timeframe === 'today' ? 'status-badge status-open text-[10px]' : 'status-badge status-warn text-[10px]'}>
+                <span className={`beacon ${timeframe === 'today' ? 'bg-[#2F7D6D]' : 'bg-[#C98A2E]'}`} />
+                {timeframe === 'today' ? 'Today (Live Intake)' : '7-Day Rolling Pattern'}
+              </span>
+            </div>
             <h3 className="mt-1 text-lg font-bold text-[#1F2933] flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-[#2F7D6D]" />
-              Peak Hours & Customer Flow Analysis
+              {timeframe === 'today' ? "Today's Live Intake & Hourly Operations" : "7-Day Historical Flow & Peak Hours"}
             </h3>
           </div>
           <div className="flex items-center gap-4 text-xs text-[#667085]">
@@ -343,14 +360,20 @@ export const BusinessAnalytics = () => {
             })}
           </div>
 
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-[#667085] gap-2 pt-2">
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-[#667085] gap-2 pt-2 border-t border-[#E6DED2]">
             <span className="flex items-center gap-1.5">
               <Zap className="h-4 w-4 text-[#C98A2E]" />
               <span>
-                Peak congestion typically occurs between <strong>11:00 AM – 1:00 PM</strong> and <strong>4:00 PM – 5:30 PM</strong>.
+                {timeframe === 'today'
+                  ? "Tracking today's live intake across operating hours up to current time."
+                  : "7-day average rush pattern. Typical lunch peak (11:00 AM – 1:00 PM) and evening peak (4:00 PM – 5:30 PM)."}
               </span>
             </span>
-            <span className="font-medium">Estimated wait during rush increases by ~35%</span>
+            <span className="font-medium">
+              {timeframe === 'today'
+                ? `Live throughput: ${kpis.totalServed ?? 0} served / ${kpis.totalArrivals ?? 0} total`
+                : 'Estimated wait during rush increases by ~35%'}
+            </span>
           </div>
         </div>
       </div>

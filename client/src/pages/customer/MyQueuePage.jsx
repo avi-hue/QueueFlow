@@ -240,10 +240,12 @@ export const MyQueuePage = () => {
               ) : position > 0 && position <= 3 ? (
                 <div className="mx-auto mt-5 max-w-md rounded-lg border-2 border-[#C98A2E] bg-[#FFFBF2] p-4 text-center">
                   <span className="text-xs uppercase font-extrabold tracking-wider text-[#C98A2E]">
-                    Turn Approaching Alert
+                    Turn Approaching Alert (FIFO Line)
                   </span>
                   <p className="mt-1 text-sm font-bold text-[#1F2933]">
-                    You are #{position} in line (~{estimatedWaitMins}m). Please start heading toward the shop counters!
+                    {position === 1
+                      ? `You are #1 in line (Next up!). Any empty counter that becomes available will call you.`
+                      : `You are #${position} in line (~${estimatedWaitMins}m). Any empty counter will take the next customer in FIFO order.`}
                   </p>
                 </div>
               ) : null}

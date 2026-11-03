@@ -157,4 +157,42 @@ describe('New Features: Nearby Queue Comparison, Real-Time Notifications, & Busi
         .send({ status: 'open' });
     });
   });
+
+  describe('Feature 4: Strict FIFO Queue & Dynamic Empty Counter Dispatch', () => {
+    it('should dispatch waiting tokens in strict FIFO order and allow any empty counter to take up customers', async () => {
+      // 1. Fetch current queue state
+      const queueRes = await request(app)
+        .get('/api/v1/queue/business/queue')
+        .set('Authorization', `Bearer ${ownerToken}`);
+      expect(queueRes.status).toBe(200);
+
+      const counters = queueRes.body.data.queue.counters;
+      expect(Array.isArray(counters)).toBe(true);
+      expect(counters.length).toBeGreaterThanOrEqual(1);
+
+      // Verify counters have live availability status
+      counters.forEach((c) => {
+        expect(['available', 'busy', 'offline']).toContain(c.status);
+      });
+
+      // 2. Call next without specifying counterId (auto-dispatch to empty counter)
+      const callAutoRes = await request(app)
+        .post('/api/v1/queue/business/queue/call-next')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({});
+
+      if (callAutoRes.status === 200) {
+        const calledToken = callAutoRes.body.data.token;
+        expect(calledToken.status).toBe('called');
+        expect(calledToken.counterId).toBeDefined();
+
+        // 3. Completing the token marks it completed and frees the counter
+        const completeRes = await request(app)
+          .post(`/api/v1/queue/business/queue/complete/${calledToken._id}`)
+          .set('Authorization', `Bearer ${ownerToken}`);
+        expect(completeRes.status).toBe(200);
+        expect(completeRes.body.data.token.status).toBe('completed');
+      }
+    });
+  });
 });

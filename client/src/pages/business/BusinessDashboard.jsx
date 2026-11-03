@@ -29,9 +29,9 @@ export const BusinessDashboard = () => {
     }
   };
 
-  const handleCallNext = async (counterId) => {
+  const handleCallNext = async (counterId = null) => {
     try {
-      await api.post('/queue/business/queue/call-next', { counterId });
+      await api.post('/queue/business/queue/call-next', { counterId: counterId || undefined });
       fetchQueue();
     } catch (err) {
       console.error('Failed to call next', err);
@@ -118,8 +118,28 @@ export const BusinessDashboard = () => {
   const activeCountersCount = activeCounters.length;
   const totalCountersCount = business.counters?.length || 0;
   const waitingCount = queueData?.waitingTokens?.length || 0;
-  const servingCount = queueData?.calledTokens?.length || 0;
+  const activeServingTokens = [
+    ...(queueData?.calledTokens || []),
+    ...(queueData?.servingTokens || [])
+  ].filter((t, idx, arr) => arr.findIndex((x) => String(x._id) === String(t._id)) === idx);
+  const servingCount = activeServingTokens.length;
   const completedCount = queueData?.recentCompletedTokens?.length || 0;
+
+  const liveCounters = (business.counters || []).map((c) => {
+    const matchingFromQueue = queueData?.counters?.find((qc) => String(qc._id) === String(c._id));
+    if (matchingFromQueue) return matchingFromQueue;
+
+    const currentToken = activeServingTokens.find((t) => String(t.counterId) === String(c._id));
+    return {
+      ...c,
+      isOccupied: Boolean(currentToken),
+      status: !c.isActive ? 'offline' : currentToken ? 'busy' : 'available',
+      currentToken: currentToken || null
+    };
+  });
+
+  const emptyCounters = liveCounters.filter((c) => c.status === 'available');
+  const busyCounters = liveCounters.filter((c) => c.status === 'busy');
 
   return (
     <div className="page-wrap space-y-6">
@@ -191,38 +211,129 @@ export const BusinessDashboard = () => {
       ) : (
         <>
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <Stat label="Waiting" value={waitingCount} hint="Customers in line" icon={Users} />
-            <Stat label="Serving" value={servingCount} hint="Called to counters" icon={Store} />
+            <Stat label="Waiting (FIFO)" value={waitingCount} hint="Next in queue order" icon={Users} />
+            <Stat label="Serving" value={servingCount} hint="Active at counters" icon={Store} />
             <Stat label="Est. Wait Time" value={`~${queueData?.stats?.estimatedWaitMins ?? 0}m`} hint={queueData?.stats?.prediction ? `${queueData.stats.prediction.confidence} confidence` : "Dynamic ETA"} icon={Clock} />
-            <Stat label="Counters Active" value={`${activeCountersCount}/${totalCountersCount}`} hint="Ready to call tokens" icon={Layers} />
+            <Stat label="Empty Counters" value={`${emptyCounters.length}/${activeCountersCount}`} hint={`${busyCounters.length} busy • ${emptyCounters.length} ready`} icon={Layers} />
             <Stat label="Service Pace" value={`~${queueData?.stats?.prediction?.blendedAvgServiceTime ?? business.settings?.avgServiceTimeDefault ?? 5}m`} hint={queueData?.stats?.prediction?.liveSampleCount ? `Live: ${queueData.stats.prediction.liveAvgServiceTime}m` : "Historical baseline"} icon={Clock} />
           </section>
 
-          <section className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+          <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
             {/* Service Counters Column */}
             <div className="panel p-5">
               <div className="section-rule mb-4 flex items-center justify-between pb-3">
                 <div>
-                  <p className="label-caps">Counter Lane Selector</p>
-                  <h2 className="mt-1 text-lg font-bold text-[#1F2933]">Service Counters</h2>
+                  <p className="label-caps">Service Counter Fleet</p>
+                  <h2 className="mt-1 text-lg font-bold text-[#1F2933]">Counters & Lanes</h2>
                 </div>
-                <Link to="/dashboard/counters" className="text-xs font-bold text-[#2F7D6D]">Configure</Link>
+                <div className="flex items-center gap-2">
+                  <span className={`status-badge ${emptyCounters.length > 0 ? 'status-open' : 'status-warn'} text-[10px]`}>
+                    {emptyCounters.length} Available
+                  </span>
+                  <Link to="/dashboard/counters" className="text-xs font-bold text-[#2F7D6D]">Configure</Link>
+                </div>
               </div>
 
-              {business.counters?.length ? (
-                <div className="space-y-2">
-                  {business.counters.map((counter, idx) => (
-                    <div key={counter._id || idx} className="flex items-center justify-between rounded-md border border-[#E6DED2] bg-white p-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className={`beacon ${counter.isActive ? 'bg-[#2F7D6D]' : 'bg-[#9CA3AF]'}`} />
-                          <h3 className="text-sm font-bold text-[#1F2933]">{counter.name}</h3>
+              {liveCounters?.length ? (
+                <div className="space-y-3">
+                  {liveCounters.map((counter, idx) => {
+                    const isAvail = counter.status === 'available';
+                    const isBusy = counter.status === 'busy';
+                    const isOffline = counter.status === 'offline';
+
+                    return (
+                      <div
+                        key={counter._id || idx}
+                        className={`rounded-lg border p-3.5 transition ${
+                          isBusy
+                            ? 'border-[#C98A2E] bg-[#FFFBF2] shadow-xs'
+                            : isAvail
+                            ? 'border-[#2F7D6D] bg-[#F7FAF8]'
+                            : 'border-[#E6DED2] bg-[#FAF7F0] opacity-75'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`beacon ${
+                                  isBusy
+                                    ? 'bg-[#C98A2E] animate-pulse'
+                                    : isAvail
+                                    ? 'bg-[#2F7D6D]'
+                                    : 'bg-[#9CA3AF]'
+                                }`}
+                              />
+                              <h3 className="text-sm font-bold text-[#1F2933]">{counter.name}</h3>
+                            </div>
+
+                            {isBusy && counter.currentToken ? (
+                              <div className="mt-1.5 flex items-center gap-2 text-xs">
+                                <span className="metric-number font-bold text-[#C98A2E]">
+                                  {counter.currentToken.tokenLabel || counter.currentToken.tokenNumber}
+                                </span>
+                                <span className="font-bold text-[#1F2933]">
+                                  {counter.currentToken.customerName || 'Customer'}
+                                </span>
+                              </div>
+                            ) : (
+                              <p className="mt-1 text-xs text-[#667085]">
+                                {isAvail ? 'Empty & ready for next customer' : 'Counter is offline / paused'}
+                              </p>
+                            )}
+                          </div>
+
+                          <span
+                            className={
+                              isBusy
+                                ? 'status-badge status-warn text-[10px]'
+                                : isAvail
+                                ? 'status-badge status-open text-[10px]'
+                                : 'status-badge text-[10px]'
+                            }
+                          >
+                            {isBusy ? 'Serving' : isAvail ? 'Empty / Ready' : 'Offline'}
+                          </span>
                         </div>
-                        <p className="mt-1 text-xs text-[#667085]">{counter.isActive ? 'Ready for serving' : 'Inactive / paused'}</p>
+
+                        {/* Counter Actions */}
+                        <div className="mt-3 pt-2.5 border-t border-[#E6DED2]/60 flex items-center justify-between gap-2">
+                          {isBusy && counter.currentToken ? (
+                            <div className="flex items-center justify-between w-full gap-2">
+                              <span className="text-[11px] text-[#667085]">
+                                In progress
+                              </span>
+                              <button
+                                onClick={() => handleComplete(counter.currentToken._id)}
+                                className="btn-primary h-7 px-2.5 text-xs font-bold flex items-center gap-1 bg-[#2F7D6D] text-white hover:bg-[#256357]"
+                                title="Complete service: marks token completed, records in customer visit history, and frees counter"
+                              >
+                                <CheckCircle className="h-3 w-3" />
+                                Complete Service
+                              </button>
+                            </div>
+                          ) : isAvail ? (
+                            <div className="flex items-center justify-between w-full gap-2">
+                              <span className="text-[11px] text-[#667085]">
+                                {waitingCount > 0 ? `${waitingCount} waiting in FIFO queue` : 'Queue empty'}
+                              </span>
+                              <button
+                                onClick={() => handleCallNext(counter._id)}
+                                disabled={waitingCount === 0}
+                                className="btn-secondary h-7 px-2.5 text-xs font-bold flex items-center gap-1 border-[#2F7D6D] text-[#2F7D6D] hover:bg-[#EBF2EE] disabled:opacity-40 disabled:cursor-not-allowed"
+                                title={waitingCount > 0 ? `Call next waiting customer in FIFO line to ${counter.name}` : 'No customers waiting'}
+                              >
+                                <Radio className="h-3 w-3 text-[#2F7D6D]" />
+                                Take Next in Queue
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="text-[11px] text-[#667085]">Lane offline</div>
+                          )}
+                        </div>
                       </div>
-                      <span className={counter.isActive ? 'status-badge status-open' : 'status-badge status-warn'}>{counter.isActive ? 'Active' : 'Offline'}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="rounded-md border border-[#E6DED2] bg-[#F0EAE1] p-4 text-sm text-[#667085]">
@@ -239,7 +350,7 @@ export const BusinessDashboard = () => {
                   </h3>
                 </div>
                 <p className="text-xs text-[#667085] mb-3">
-                  Assign a token for in-person visitors with their customer name.
+                  Assign a token for in-person visitors with their customer name into the FIFO queue.
                 </p>
                 <button
                   onClick={() => setShowWalkInModal(true)}
@@ -255,7 +366,7 @@ export const BusinessDashboard = () => {
             <div className="panel p-5">
               <div className="section-rule mb-4 flex flex-col justify-between gap-3 pb-3 sm:flex-row sm:items-center">
                 <div>
-                  <p className="label-caps">Live Queue Triage</p>
+                  <p className="label-caps">FIFO Dispatch & Live Operations</p>
                   <h2 className="mt-1 flex items-center gap-2 text-lg font-bold text-[#1F2933]">
                     <Radio className="h-4 w-4 text-[#2F7D6D]" />
                     Queue Desk
@@ -263,8 +374,28 @@ export const BusinessDashboard = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
+                    onClick={() => handleCallNext(null)}
+                    disabled={waitingCount === 0 || emptyCounters.length === 0}
+                    className="btn-primary h-8 px-3 text-xs font-bold flex items-center gap-1.5 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={
+                      emptyCounters.length === 0
+                        ? 'All counters are currently serving. Complete a service above to free a counter.'
+                        : waitingCount === 0
+                        ? 'No customers waiting in queue'
+                        : `Call next FIFO customer to ${emptyCounters[0]?.name}`
+                    }
+                  >
+                    <Radio className="h-3.5 w-3.5" />
+                    <span>Call Next (Any Empty Counter)</span>
+                    {emptyCounters.length > 0 && (
+                      <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-mono">
+                        {emptyCounters.length} free
+                      </span>
+                    )}
+                  </button>
+                  <button
                     onClick={() => setShowWalkInModal(true)}
-                    className="btn-primary h-8 px-2.5 text-xs font-bold flex items-center gap-1"
+                    className="btn-secondary h-8 px-2.5 text-xs font-bold flex items-center gap-1"
                   >
                     <Plus className="h-3 w-3" />
                     Walk-In
@@ -284,9 +415,9 @@ export const BusinessDashboard = () => {
               ) : (
                 <div className="space-y-4">
                   <div className="grid gap-4 xl:grid-cols-2">
-                    {/* WAITING QUEUE COLUMN */}
-                    <QueueColumn title="Waiting" count={waitingCount} empty="No customers waiting.">
-                      {queueData.waitingTokens?.map((token) => (
+                    {/* WAITING QUEUE COLUMN (STRICT FIFO) */}
+                    <QueueColumn title="Waiting (FIFO)" count={waitingCount} empty="No customers waiting.">
+                      {queueData.waitingTokens?.map((token, idx) => (
                         <li key={token._id} className="p-3 hover:bg-[#FAF7F0] transition">
                           <div className="flex items-start justify-between gap-2">
                             <div>
@@ -305,31 +436,45 @@ export const BusinessDashboard = () => {
                                 <span>~{token.estimatedWaitAtJoin ?? 5}m est. wait</span>
                               </div>
                             </div>
-                            <span className="status-badge status-warn text-[10px]">Waiting</span>
+                            <span className={idx === 0 ? "status-badge status-open text-[10px]" : "status-badge status-warn text-[10px]"}>
+                              {idx === 0 ? 'Next in Line (FIFO)' : `#${idx + 1} in Line`}
+                            </span>
                           </div>
                         </li>
                       ))}
-                      {activeCounters.length > 0 && waitingCount > 0 && (
+                      {waitingCount > 0 && (
                         <li className="mt-2 border-t border-[#E6DED2] p-3 bg-[#FAF7F0]">
-                          <p className="label-caps mb-2 text-[10px]">Call next to counter lane</p>
-                          <div className="flex flex-wrap gap-2">
-                            {activeCounters.map((counter) => (
-                              <button
-                                key={counter._id}
-                                onClick={() => handleCallNext(counter._id)}
-                                className="btn-primary h-8 px-3 text-xs font-bold"
-                              >
-                                Call to {counter.name}
-                              </button>
-                            ))}
-                          </div>
+                          {emptyCounters.length > 0 ? (
+                            <>
+                              <p className="label-caps mb-2 text-[10px] text-[#2F7D6D]">
+                                Dispatch Next FIFO Customer to Empty Counter:
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {emptyCounters.map((counter) => (
+                                  <button
+                                    key={counter._id}
+                                    onClick={() => handleCallNext(counter._id)}
+                                    className="btn-primary h-8 px-3 text-xs font-bold flex items-center gap-1.5"
+                                  >
+                                    <Radio className="h-3 w-3" />
+                                    Call to {counter.name}
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="flex items-center gap-2 text-xs text-[#667085]">
+                              <AlertCircle className="h-4 w-4 text-[#C98A2E] shrink-0" />
+                              <span>All counters currently busy. Complete a customer at an occupied counter to free it.</span>
+                            </div>
+                          )}
                         </li>
                       )}
                     </QueueColumn>
 
                     {/* SERVING / CALLED QUEUE COLUMN */}
                     <QueueColumn title="Serving / Called" count={servingCount} empty="No customers currently being served.">
-                      {queueData.calledTokens?.map((token) => (
+                      {activeServingTokens?.map((token) => (
                         <li key={token._id} className="p-3 hover:bg-[#FAF7F0] transition">
                           <div className="flex items-start justify-between gap-2">
                             <div>
@@ -348,7 +493,8 @@ export const BusinessDashboard = () => {
                             <div className="flex flex-col gap-1 items-end">
                               <button
                                 onClick={() => handleComplete(token._id)}
-                                className="btn-secondary h-7 px-2 text-xs font-bold flex items-center gap-1 border-[#2F7D6D] text-[#2F7D6D] hover:bg-[#EBF2EE]"
+                                className="btn-primary h-7 px-2.5 text-xs font-bold flex items-center gap-1 bg-[#2F7D6D] text-white hover:bg-[#256357]"
+                                title="Complete service: marks token completed, records in customer visit history, and frees counter"
                               >
                                 <CheckCircle className="h-3 w-3" />
                                 Complete
@@ -400,10 +546,10 @@ export const BusinessDashboard = () => {
             <div>
               <div className="flex items-center gap-2 text-sm font-bold text-[#2F7D6D]">
                 <CheckCircle className="h-4 w-4" />
-                <span>Customer Names Synchronized & Real-Time QueueDesk Operations Active</span>
+                <span>Strict FIFO Queue & Dynamic Empty Counter Dispatch Active</span>
               </div>
               <p className="mt-1 text-xs text-[#667085] leading-relaxed max-w-2xl">
-                Every token is synchronized with its customer name across owner, staff, and customer views. Completed customers automatically record to their visit history while queues update dynamically.
+                Customers join the queue in strict First-In-First-Out (FIFO) sequence. Any available empty counter can take up the next waiting person in line. When service completes, the visit is saved in the customer's history, the counter immediately frees up, and other waiting customers' queue positions update dynamically.
               </p>
             </div>
             <button

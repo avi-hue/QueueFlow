@@ -378,41 +378,65 @@ async function addWalkIn(businessId, walkInName, counterId = null) {
 }
 
 /**
- * Call the next waiting customer to a service counter
+ * Call the next waiting customer to a service counter in strict FIFO order.
+ * If counterId is omitted or 'auto', automatically dispatches to the first available empty counter.
  */
-async function callNext(businessId, counterId, staffId = null) {
+async function callNext(businessId, counterId = null, staffId = null) {
   const queue = await getOrCreateTodaysQueue(businessId);
   if (queue.status === 'closed') {
     throw new Error('Cannot call customers when queue is closed');
   }
 
-  // Find lowest token number in waiting status
+  // Find lowest token number in waiting status (strict FIFO)
   const waitingTokens = await Token.find({ queueId: queue._id, status: 'waiting' });
   if (!waitingTokens || waitingTokens.length === 0) {
     throw new Error('No customers currently waiting in queue');
   }
 
-  // Pick earliest waiting token
+  // Pick earliest waiting token in strict FIFO order
   waitingTokens.sort((a, b) => a.tokenNumber - b.tokenNumber);
   const nextToken = waitingTokens[0];
 
+  const business = await Business.findById(businessId);
+  const activeCounters = (business?.counters || []).filter((c) => c.isActive);
+
+  // If no counter specified or 'auto', find the first active counter that is currently empty (not serving any called/serving token)
+  let targetCounterId = counterId;
+  if (!targetCounterId || targetCounterId === 'auto') {
+    const activeTokens = await Token.find({
+      queueId: queue._id,
+      status: { $in: ['called', 'serving'] }
+    });
+    const busyCounterIds = new Set(
+      activeTokens.map((t) => String(t.counterId)).filter(Boolean)
+    );
+    const emptyCounter = activeCounters.find((c) => !busyCounterIds.has(String(c._id)));
+
+    if (emptyCounter) {
+      targetCounterId = emptyCounter._id;
+    } else if (activeCounters.length > 0) {
+      targetCounterId = activeCounters[0]._id;
+    }
+  }
+
   nextToken.status = 'called';
   nextToken.calledAt = new Date().toISOString();
-  nextToken.counterId = counterId;
+  nextToken.counterId = targetCounterId || null;
   await nextToken.save();
 
   // Update nowServing array in Queue
-  const idx = queue.nowServing.findIndex((ns) => String(ns.counterId) === String(counterId));
-  if (idx >= 0) {
-    queue.nowServing[idx].tokenId = nextToken._id;
-  } else {
-    queue.nowServing.push({ counterId, tokenId: nextToken._id });
+  if (targetCounterId) {
+    const idx = queue.nowServing.findIndex((ns) => String(ns.counterId) === String(targetCounterId));
+    if (idx >= 0) {
+      queue.nowServing[idx].tokenId = nextToken._id;
+    } else {
+      queue.nowServing.push({ counterId: targetCounterId, tokenId: nextToken._id });
+    }
+    await queue.save();
   }
-  await queue.save();
 
   try {
-    const business = await Business.findById(businessId);
-    const counterObj = business?.counters?.find((c) => String(c._id) === String(counterId));
+    const counterObj = business?.counters?.find((c) => String(c._id) === String(targetCounterId));
     const counterName = counterObj ? counterObj.name : 'Counter';
     await notificationService.notifyCustomerCalled(nextToken, business, counterName);
     await notificationService.checkAndTriggerApproachingAlerts(businessId, queue._id);
@@ -632,9 +656,34 @@ async function getQueueState(businessId) {
   const enrichedTokens = await Promise.all(allTokens.map((t) => enrichToken(t, business)));
 
   const waitingTokens = enrichedTokens.filter((t) => t.status === 'waiting');
+  // Sort waiting list in strict FIFO order (lowest token number first)
+  waitingTokens.sort((a, b) => a.tokenNumber - b.tokenNumber);
+
   const calledTokens = enrichedTokens.filter((t) => t.status === 'called');
   const servingTokens = enrichedTokens.filter((t) => t.status === 'serving');
   const completedTokens = enrichedTokens.filter((t) => t.status === 'completed');
+
+  // Compute live counter availability & occupancy (which counters are empty vs serving)
+  const activeServingList = [...calledTokens, ...servingTokens];
+  const liveCounters = (business.counters || []).map((c) => {
+    const activeToken = activeServingList.find(
+      (t) => String(t.counterId) === String(c._id)
+    );
+    const completedCount = completedTokens.filter(
+      (t) => String(t.counterId) === String(c._id)
+    ).length;
+
+    return {
+      _id: c._id,
+      name: c.name,
+      isActive: Boolean(c.isActive),
+      staffId: c.staffId || null,
+      isOccupied: Boolean(activeToken),
+      status: !c.isActive ? 'offline' : (activeToken ? 'busy' : 'available'),
+      currentToken: activeToken || null,
+      tokensServedToday: completedCount
+    };
+  });
 
   const prediction = await predictWaitTime(business, queue, waitingTokens.length);
   const estimatedWaitMins = prediction.estimatedWaitMins;
@@ -646,11 +695,15 @@ async function getQueueState(businessId) {
     status: queue.status,
     tokenSeq: queue.tokenSeq,
     nowServing: queue.nowServing,
+    counters: liveCounters,
     stats: {
       totalWaiting: waitingTokens.length,
       totalCalled: calledTokens.length,
       totalServing: servingTokens.length,
       totalCompleted: completedTokens.length,
+      activeCountersCount: liveCounters.filter((c) => c.isActive).length,
+      emptyCountersCount: liveCounters.filter((c) => c.status === 'available').length,
+      busyCountersCount: liveCounters.filter((c) => c.status === 'busy').length,
       estimatedWaitMins,
       prediction
     },

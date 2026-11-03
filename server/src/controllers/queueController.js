@@ -149,17 +149,16 @@ async function updateQueueStatus(req, res, next) {
 }
 
 /**
- * Staff / Owner: Call next customer in queue
+ * Staff / Owner: Call next customer in queue in strict FIFO order.
+ * If counterId is provided, calls to that counter. If counterId is omitted or 'auto',
+ * automatically assigns to the first available empty counter.
  */
 async function callNext(req, res, next) {
   try {
     const businessId = req.user.businessId;
-    const { counterId } = req.body;
-    if (!counterId) {
-      return res.status(400).json({ status: 'fail', message: 'counterId is required' });
-    }
+    const { counterId } = req.body || {};
 
-    const token = await queueService.callNext(businessId, counterId, req.user._id);
+    const token = await queueService.callNext(businessId, counterId || null, req.user._id);
     res.status(200).json({
       status: 'success',
       message: `Called token ${token.tokenLabel}`,
